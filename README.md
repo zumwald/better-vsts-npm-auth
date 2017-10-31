@@ -22,3 +22,6 @@ vstsAuth.run()
 
 ## Dependency on [stateless-vsts-oauth](https://github.com/zumwald/stateless-vsts-oauth)
 VSTS's OAuth flow is documented [here](https://docs.microsoft.com/en-us/vsts/integrate/get-started/authentication/oauth). It requires an internet-facing service to complete the token exchanges. While you're welcome to use an existing service if you have one or build your own if you're so inclined, you can also use this service as-is. It's hosted at https://stateless-vsts-oauth.azurewebsites.net.
+
+## Prior art
+While incomplete - the lack of support for *nix systems was perplexing - [vsts-npm-auth](https://www.npmjs.com/package/vsts-npm-auth) laid the foundation for this project in principle.
