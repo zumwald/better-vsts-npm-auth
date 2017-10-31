@@ -3,8 +3,13 @@
 const config = require('./config.js');
 const input = require('input');
 
+let runningCmd = false;
+
 // commands
-const CONFIG_SETTER = argv => config.set(argv.key, argv.value);
+const CONFIG_SETTER = argv => {
+    config.set(argv.key, argv.value);
+    return Promise.resolve();
+};
 const CONFIG_GETTER = argv => {
     let configObj = config.get();
 
@@ -13,6 +18,7 @@ const CONFIG_GETTER = argv => {
     }
 
     console.log(configObj);
+    return Promise.resolve();
 };
 const CONFIG_DELETER = argv => {
     let configObj = config.get();
@@ -24,6 +30,7 @@ const CONFIG_DELETER = argv => {
     if (configObj[argv.key]) {
         delete configObj[argv.key];
         writeConfig(configObj);
+        return Promise.resolve();
     } else {
         // get user confirmation and then delete the whole config
         return input.confirm('Are you sure you want to delete your config file?').then(deleteConfig => {
@@ -36,8 +43,8 @@ const CONFIG_DELETER = argv => {
 
 const commandBuilder = cmd => {
     return (args) => {
-        cmd(args);
-        process.exit(0);
+        runningCmd = true;
+        cmd(args).then(() => process.exit(0));
     }
 }
 
@@ -84,4 +91,6 @@ let abortProcess = e => {
 process.on('uncaughtException', abortProcess);
 process.on('unhandledRejection', abortProcess);
 
-task.run(argv);
+if (!runningCmd) {
+    task.run(argv);
+}

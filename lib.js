@@ -4,7 +4,7 @@ const path = require('path');
 const jwt = require('jsonwebtoken');
 const npm = require('./npm.js');
 const config = require('./config.js');
-const getAuthToken = require('./vsts-auth-client.js').getAuthToken;
+const vstsAuth = require('./vsts-auth-client.js');
 const openUrl = require('openurl2').open;
 const uuid = require('uuid/v4');
 
@@ -30,10 +30,33 @@ const uuid = require('uuid/v4');
  *         access_token for authorization.
  */
 
+let _promptUserForAuth = (clientId, redirectUri) => {
+    // for use by external modules, make params optional
+    let cfg;
+    let getCfg = () => {
+        cfg = cfg || config.get();
+        return cfg;
+    };
+
+    if (!clientId) {
+        clientId = getCfg.clientId;
+    }
+    if (!redirectUri) {
+        redirectUri = getCfg.redirectUri;
+    }
+
+    `https://app.vssps.visualstudio.com/oauth2/authorize?client_id=${clientId}&response_type=Assertion&state=${uuid()}&scope=vso.packaging_write&redirect_uri=${redirectUri}`;
+    console.log('We need user consent before this script can run. Follow instructions in the browser window that just opened ' +
+        `and then you can run this script again. If a browser does not open, paste ${consentUrl} into your browser window and follow ` +
+        'the instructions to grant permissions.');
+    openUrl(consentUrl);
+};
+exports.promptUserForAuth = _promptUserForAuth;
+exports.isAuthorizationError = e => e instanceof vstsAuth.AuthorizationError;
 exports.run = argv => {
     // argv is optional, if it's not provided then load the default config
     argv = argv || config.get();
-    
+
     return Promise.all([
         new npm.Npmrc(os.homedir()).readSettingsFromFile(),
         new npm.Npmrc(argv.npmrcPath).readSettingsFromFile()
@@ -88,7 +111,7 @@ exports.run = argv => {
             return false;
         });
 
-        return getAuthToken().then(accessToken => {
+        return vstsAuth.getAuthToken().then(accessToken => {
             let newConfig = projectRegistries.reduce((c, r) => {
                 r.getAuthKeys().forEach(k => {
                     c[k] = accessToken;
@@ -99,18 +122,12 @@ exports.run = argv => {
             Object.assign(npmrcResults.userNpmrc.settings, newConfig);
             return npmrcResults.userNpmrc.saveSettingsToFile();
         }).catch(e => {
-            console.error('Caught error when trying to get access_token for VSTS:', e);
-
             // if this is running in a CI environment, reject to signal failure
             // otherwise, open the auth page as the error is likely due to
             // the user needing to authorize the app and/or configure their
             // refresh_token
             if (!process.env.BUILD_BUILDID && !process.env.RELEASE_RELEASEID) {
-                let consentUrl = `https://app.vssps.visualstudio.com/oauth2/authorize?client_id=${argv.clientId}&response_type=Assertion&state=${uuid()}&scope=vso.packaging_write&redirect_uri=${argv.redirectUri}`;
-                console.log('We need user consent before this script can run. Follow instructions in the browser window that just opened ' +
-                    `and then you can run this script again. If a browser does not open, paste ${consentUrl} into your browser window and follow ` +
-                    'the instructions to grant permissions.');
-                openUrl(consentUrl);
+                _promptUserForAuth(argv.clientId, argv.redirectUri);
             }
 
             // no matter what, we error out here

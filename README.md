@@ -17,7 +17,20 @@ Example:
 const vstsAuth = require('better-vsts-npm-auth');
 
 vstsAuth.run()
-  .then(() => console.log('woohoo! No more annoying 401s'));
+  .then(() => console.log('woohoo! No more annoying 401s'))
+  .catch(e => {
+      // we can catch AuthorizationError and prompt our users to
+      // authorize the Stateless VSTS NPM OAuth application
+      // (or your own application, if you specify an alternate 
+      // clientId in your config, which you're welcome to do)
+      if (vstsAuth.isAuthorizationError(e)){
+          // fire and forget helper to launch a browser and
+          // navigate to the authorization page for the OAuth app
+          vstsAuth.promptUserForAuth();
+          
+          // note: if you want to fail out of this promise chain
+          // be sure to re-throw something here.
+      });
 ```
 
 ## Dependency on [stateless-vsts-oauth](https://github.com/zumwald/stateless-vsts-oauth)
