@@ -35,6 +35,8 @@ exports.isAuthorizationError = e => e instanceof vstsAuth.AuthorizationError;
 exports.run = argv => {
     // argv is optional, if it's not provided then load the default config
     argv = argv || config.get();
+    // set default for npmrcPath
+    argv.npmrcPath = argv.npmrcPath || process.cwd();
 
     return Promise.all([
         new npm.Npmrc(os.homedir()).readSettingsFromFile(),

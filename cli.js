@@ -55,7 +55,6 @@ const argv = require('yargs')
     .example('$0 config foo bar', 'set a config value "foo" to be "bar"')
     .options('n', {
         alias: 'npmrcPath',
-        default: process.cwd(),
         describe: 'path to npmrc config',
         type: 'string'
     })
