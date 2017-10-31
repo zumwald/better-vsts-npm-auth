@@ -1,6 +1,16 @@
 const request = require('request');
 const config = require('./config.js');
 
+const k_REFRESH_TOKEN = 'refresh_token';
+
+class AuthorizationError extends Error {
+    constructor(...a) {
+        super(...a);
+    }
+}
+
+exports.AuthorizationError = AuthorizationError;
+exports.setRefreshToken = t => config.set(k_REFRESH_TOKEN, t);
 exports.getAuthToken = () => {
     // we can short-circuit in a lab environment where SYSTEM_ACCESSTOKEN is available
     // this avoids the instability of making unnecessary network requests
@@ -12,67 +22,28 @@ exports.getAuthToken = () => {
 
     let configObj = config.get();
     // validate config
-    if (!configObj || !configObj.tokenEndpoint || !configObj.refresh_token) {
-        const msg = 'Error in vsts-auth-client.getAuthToken with \n\ttokenEndpoint: '
-            + configObj && configObj.tokenEndpoint + '\n\trefresh_token: ' + configObj && configObj.refresh_token;
-        return Promise.reject(msg);
+    if (!configObj || !configObj.tokenEndpoint) {
+        return Promise.reject(new Error('invalid config, missing tokenEndpoint'));
+    } else if (!configObj[k_REFRESH_TOKEN]) {
+        return Promise.reject(new AuthorizationError('missing ' + k_REFRESH_TOKEN));
     }
 
     return new Promise((resolve, reject) => {
         return request.post(configObj.tokenEndpoint, {
             json: true,
             qs: {
-                code: configObj.refresh_token
+                code: configObj[k_REFRESH_TOKEN]
             }
         }, (err, res, body) => {
             if (err) {
                 return reject(err);
-            } else if (!body || !body.refresh_token || !body.access_token) {
+            } else if (!body || !body[k_REFRESH_TOKEN] || !body.access_token) {
                 return reject('malformed response body:\n' + body);
             } else {
                 // stash the refresh_token
-                config.set('refresh_token', body.refresh_token);
+                config.set(k_REFRESH_TOKEN, body[k_REFRESH_TOKEN]);
                 return resolve(body.access_token);
             }
         });
     });
 };
-
-/*
-class VstsAuthClient {
-    constructor(clientId, tokenEndpoint) {
-        // use closure pattern to create private members
-        let _vstsApiRequestOptions = {
-            json: true,
-            headers: {
-                'X-TFS-FedAuthRedirect': 'Suppress'
-            }
-        };
-
-
-
-        // define public methods which need to interact with private members
-        this.setAuthenticationOption = obj => _requestOptions.auth = obj;
-        this.getVstsApiRequestOptions = () => _vstsApiRequestOptions;
-
-        this.getAuthToken = refresh_token => {
-
-        };
-    }
-
-    /*getFeedToken(project, feed, cb) {
-        // validate input
-        if (!project || !feed || !cb) {
-            throw new Error('VstsAuthClient.getFeedToken: invalid parameters');
-        }
-
-        let options = this.getVstsApiRequestOptions();
-        options.baseUrl = `https://${project}.feeds.visualstudio.com/`;
-
-        request.get('_apis/FeedToken/SessionTokens/' + feed, options, (error, response, body) => {
-            cb(error, body && body.alternateToken);
-        });
-
-        return this;
-    }
-}*/

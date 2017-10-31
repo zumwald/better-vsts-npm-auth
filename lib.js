@@ -4,7 +4,7 @@ const path = require('path');
 const jwt = require('jsonwebtoken');
 const npm = require('./npm.js');
 const config = require('./config.js');
-const getAuthToken = require('./vsts-auth-client.js').getAuthToken;
+const vstsAuth = require('./vsts-auth-client.js');
 const openUrl = require('openurl2').open;
 const uuid = require('uuid/v4');
 
@@ -30,10 +30,12 @@ const uuid = require('uuid/v4');
  *         access_token for authorization.
  */
 
+exports.setRefreshToken = vstsAuth.setRefreshToken;
+exports.isAuthorizationError = e => e instanceof vstsAuth.AuthorizationError;
 exports.run = argv => {
     // argv is optional, if it's not provided then load the default config
     argv = argv || config.get();
-    
+
     return Promise.all([
         new npm.Npmrc(os.homedir()).readSettingsFromFile(),
         new npm.Npmrc(argv.npmrcPath).readSettingsFromFile()
@@ -88,7 +90,7 @@ exports.run = argv => {
             return false;
         });
 
-        return getAuthToken().then(accessToken => {
+        return vstsAuth.getAuthToken().then(accessToken => {
             let newConfig = projectRegistries.reduce((c, r) => {
                 r.getAuthKeys().forEach(k => {
                     c[k] = accessToken;
@@ -99,8 +101,6 @@ exports.run = argv => {
             Object.assign(npmrcResults.userNpmrc.settings, newConfig);
             return npmrcResults.userNpmrc.saveSettingsToFile();
         }).catch(e => {
-            console.error('Caught error when trying to get access_token for VSTS:', e);
-
             // if this is running in a CI environment, reject to signal failure
             // otherwise, open the auth page as the error is likely due to
             // the user needing to authorize the app and/or configure their
@@ -114,7 +114,7 @@ exports.run = argv => {
             }
 
             // no matter what, we error out here
-            return Promise.reject('fatal error, unable to authorize');
+            return Promise.reject(e);
         });
     });
 };

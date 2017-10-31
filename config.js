@@ -9,7 +9,6 @@ const defaults = {
     clientId: 'DE516D90-B63E-4994-BA64-881EA988A9D2',
     redirectUri: 'https://stateless-vsts-oauth.azurewebsites.net/oauth-callback',
     tokenEndpoint: 'https://stateless-vsts-oauth.azurewebsites.net/token-refresh'
-    //resourceId: '499b84ac-1321-427f-aa17-267ca6975798' // resourceId for vsts - should not need to be overridden
 }
 
 class Config {
