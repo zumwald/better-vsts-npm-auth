@@ -1,0 +1,20 @@
+{
+  "name": "better-vsts-npm-auth",
+  "version": "1.0.0",
+  "description": "Platform agnostic library which provides a robust solution for maintaining credentials in your npmrc files",
+  "main": "lib.js",
+  "bin": {
+    "better-vsts-npm-auth": "./cli.js"
+  },
+  "repository": "https://github.com/zumwald/better-vsts-npm-auth.git",
+  "author": "Daniel Zumwalt <daniel.zumwalt@moutlook.com>",
+  "license": "MIT",
+  "dependencies": {
+    "input": "^1.0.1",
+    "jsonwebtoken": "^8.1.0",
+    "openurl2": "^1.0.1",
+    "request": "^2.83.0",
+    "uuid": "^3.1.0",
+    "yargs": "^10.0.3"
+  }
+}
