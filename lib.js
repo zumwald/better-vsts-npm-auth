@@ -112,7 +112,10 @@ exports.run = argv => {
                 console.log('We need user consent before this script can run. Follow instructions in the browser window that just opened ' +
                     `and then you can run this script again. If a browser does not open, paste ${consentUrl} into your browser window and follow ` +
                     'the instructions to grant permissions.');
-                openUrl(consentUrl);
+                let os = require('os');
+                if (os.platform() !== 'win32') {
+                    openUrl(consentUrl); // only try to open on *nix systems, Windows refuses to cooperate
+                }
             }
 
             // no matter what, we error out here
