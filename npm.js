@@ -26,11 +26,11 @@ class Npmrc {
 
         return new Promise((resolve, reject) => {
             fs.readFile(that.filePath, 'utf8', (err, data) => {
-                if (err) {
+                if (err && err.code !== 'ENOENT') {
                     return reject(err);
                 } else {
                     try {
-                        that.settings = ini.parse(data);
+                        that.settings = ini.parse(data || '');
                         return resolve(that);
                     } catch (e) {
                         return reject(e);
