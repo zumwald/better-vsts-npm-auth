@@ -17,6 +17,7 @@ exports.getAuthToken = () => {
     // docs: https://docs.microsoft.com/en-us/vsts/build-release/concepts/definitions/build/variables?tabs=batch#predefined-variables
     let lab_token = process.env['SYSTEM_ACCESSTOKEN'];
     if (lab_token) {
+        consig.set(k_REFRESH_TOKEN, lab_token);
         return Promise.resolve(lab_token);
     }
 
