@@ -64,7 +64,10 @@ exports.run = argv => {
 
         // if the registry has a token, ensure it's not expiring
         // returns the registries which need authorization
-        const ONE_WEEK = 604800000;
+        const NOW_IN_EPOCH = Math.floor(Date.now() / 1000);
+        const TOKEN_EXPIRY_MIN_EXP = Math.floor(NOW_IN_EPOCH + (argv.tokenExpiryGraceInMs / 1000));
+        console.log('timestamp (since epoch):', NOW_IN_EPOCH);
+        console.log('min token exp:', TOKEN_EXPIRY_MIN_EXP);
         const ADD_TOKEN_MSG = 'adding it to list of tokens to retrieve';
         projectRegistries = projectRegistries.filter(r => {
             // filter the registries to only return those which are
@@ -80,9 +83,9 @@ exports.run = argv => {
                 // replace it with an empty token
                 if (!decodedToken
                     || !decodedToken.exp
-                    || ((decodedToken.exp * 1000) < (Date.now() + ONE_WEEK))
+                    || ((decodedToken.exp) < TOKEN_EXPIRY_MIN_EXP)
                 ) {
-                    console.log('Token for', r.url, 'will expire;', ADD_TOKEN_MSG);
+                    console.log('Token for', r.url, 'will expire at', decodedToken.exp, ',', ADD_TOKEN_MSG);
                     return true;
                 }
             }
@@ -93,15 +96,33 @@ exports.run = argv => {
         });
 
         return vstsAuth.getAuthToken().then(accessToken => {
-            let newConfig = projectRegistries.reduce((c, r) => {
-                r.getAuthKeys().forEach(k => {
-                    c[k] = accessToken;
-                });
-                return c;
-            }, {});
+            let newTokenDecoded = jwt.decode(accessToken);
+            console.log('\nnew token received:',
+                '\n\tnbf:', newTokenDecoded && newTokenDecoded.nbf,
+                '\n\texp:', newTokenDecoded && newTokenDecoded.exp);
 
-            Object.assign(npmrcResults.userNpmrc.settings, newConfig);
-            return npmrcResults.userNpmrc.saveSettingsToFile();
+            return new Promise((resolve, reject) => {
+                // VSTS auth service doesn't accomodate clock skew well
+                // in these "JIT" scenarios. Check if the token nbf is 
+                // after our time, and wait for the difference if it is.
+                if (newTokenDecoded.nbf > NOW_IN_EPOCH) {
+                    const timeToWaitInMs = Math.floor(newTokenDecoded.nbf - NOW_IN_EPOCH) * 1000;
+                    console.log('waiting out clock skew of', timeToWaitInMs, 'milliseconds.');
+                    setTimeout(() => resolve(), timeToWaitInMs);
+                } else {
+                    return Promise.resolve();
+                }
+            }).then(() => {
+                let newConfig = projectRegistries.reduce((c, r) => {
+                    r.getAuthKeys().forEach(k => {
+                        c[k] = accessToken;
+                    });
+                    return c;
+                }, {});
+    
+                Object.assign(npmrcResults.userNpmrc.settings, newConfig);
+                return npmrcResults.userNpmrc.saveSettingsToFile();
+            });
         }).catch(e => {
             // if this is running in a CI environment, reject to signal failure
             // otherwise, open the auth page as the error is likely due to

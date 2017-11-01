@@ -8,7 +8,8 @@ const configPath = path.join(os.homedir(), '.vstsnpmauthrc');
 const defaults = {
     clientId: 'DE516D90-B63E-4994-BA64-881EA988A9D2',
     redirectUri: 'https://stateless-vsts-oauth.azurewebsites.net/oauth-callback',
-    tokenEndpoint: 'https://stateless-vsts-oauth.azurewebsites.net/token-refresh'
+    tokenEndpoint: 'https://stateless-vsts-oauth.azurewebsites.net/token-refresh',
+    tokenExpiryGraceInMs: 1800000
 }
 
 class Config {
