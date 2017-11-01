@@ -99,7 +99,8 @@ exports.run = argv => {
             let newTokenDecoded = jwt.decode(accessToken);
             console.log('\nnew token received:',
                 '\n\tnbf:', newTokenDecoded && newTokenDecoded.nbf,
-                '\n\texp:', newTokenDecoded && newTokenDecoded.exp);
+                '\n\texp:', newTokenDecoded && newTokenDecoded.exp,
+                '\n\tscope:', newTokenDecoded && newTokenDecoded.scp);
 
             return new Promise((resolve, reject) => {
                 // VSTS auth service doesn't accomodate clock skew well
@@ -110,7 +111,7 @@ exports.run = argv => {
                     console.log('waiting out clock skew of', timeToWaitInMs, 'milliseconds.');
                     setTimeout(() => resolve(), timeToWaitInMs);
                 } else {
-                    return Promise.resolve();
+                    resolve();
                 }
             }).then(() => {
                 let newConfig = projectRegistries.reduce((c, r) => {
