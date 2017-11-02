@@ -30,6 +30,7 @@ class Npmrc {
                     return reject(err);
                 } else {
                     try {
+                        console.log('config from', that.filePath);
                         that.settings = ini.parse(data || '');
                         return resolve(that);
                     } catch (e) {
