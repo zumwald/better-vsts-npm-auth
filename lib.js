@@ -39,7 +39,7 @@ exports.run = argv => {
     argv.npmrcPath = argv.npmrcPath || process.cwd();
 
     return Promise.all([
-        new npm.Npmrc(os.homedir()).readSettingsFromFile(),
+        npm.Npmrc.getUserNpmrc().readSettingsFromFile(),
         new npm.Npmrc(argv.npmrcPath).readSettingsFromFile()
     ]).then(npmrcResults => ({
         userNpmrc: npmrcResults[0],

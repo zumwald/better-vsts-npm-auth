@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const ini = require('ini');
+const os = require('os');
 
 class Npmrc {
     constructor(basePath) {
@@ -55,6 +56,17 @@ class Npmrc {
 
     static isAuthSetting(key) {
         return key.indexOf(AUTHTOKEN_PARTIAL_KEY) > -1;
+    }
+
+    static getUserNpmrc() {
+        let userPath = os.homedir();
+        let npm_config_userPath = process.env['NPM_CONFIG_USERCONFIG']; // if running in npm context, use source of truth
+
+        if (npm_config_userPath) {
+            userPath = npm_config_userPath.replace('.npmrc', '');
+        }
+
+        return new Npmrc(userPath);
     }
 }
 
