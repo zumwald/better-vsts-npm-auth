@@ -60,7 +60,7 @@ class Npmrc {
 
     static getUserNpmrc() {
         let userPath = os.homedir();
-        let npm_config_userPath = process.env['NPM_CONFIG_USERCONFIG']; // if running in npm context, use source of truth
+        let npm_config_userPath = process.env['npm_config_userconfig']; // if running in npm context, use source of truth
 
         if (npm_config_userPath) {
             userPath = npm_config_userPath.replace('.npmrc', '');
