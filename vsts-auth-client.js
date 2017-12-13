@@ -18,7 +18,7 @@ exports.getAuthToken = () => {
     let lab_token = process.env['SYSTEM_ACCESSTOKEN'];
     if (lab_token) {
         console.log('using SYSTEM_ACCESSTOKEN provided.');
-        consig.set(k_REFRESH_TOKEN, lab_token);
+        config.set(k_REFRESH_TOKEN, lab_token);
         return Promise.resolve(lab_token);
     }
 
