@@ -47,9 +47,9 @@ exports.run = argv => {
     })).then(npmrcResults => {
         // get project registries which we need credentials for (restrict to
         // visualstudio.com hosted registries)
-        const isVstsFeedUrl = r => r && r.indexOf('pkgs.visualstudio.com/_packaging') > -1;
+        const isVstsFeedUrl = r => r && r.indexOf && r.indexOf('pkgs.visualstudio.com/_packaging') > -1;
         let projectRegistries = npmrcResults.projectNpmrc.getRegistries()
-            .filter(r => isVstsFeedUrl(r.url));
+            .filter(r => isVstsFeedUrl(r.url || ''));
         console.log('Found the following project registries needed for the', argv.npmrcPath, 'project:\n', projectRegistries.map(r => '\t' + r.url).join('\n'));
 
         // hydrate token info for registries for which we already have auth
