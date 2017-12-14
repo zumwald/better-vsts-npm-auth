@@ -3,8 +3,17 @@
   "version": "1.4.1",
   "description": "Platform agnostic library which provides a robust solution for maintaining credentials in your npmrc files",
   "main": "lib.js",
+  "engines": {
+    "yarn": ">=1.3.2",
+    "node": ">=6"
+  },
   "bin": {
     "better-vsts-npm-auth": "./cli.js"
+  },
+  "scripts": {
+    "test": "jest",
+    "precommit": "lint-staged",
+    "prettier": "prettier --write *.{js,json,md}"
   },
   "repository": "https://github.com/zumwald/better-vsts-npm-auth.git",
   "author": "Daniel Zumwalt <daniel.zumwalt@moutlook.com>",
@@ -17,5 +26,21 @@
     "request": "^2.83.0",
     "uuid": "^3.1.0",
     "yargs": "^10.0.3"
+  },
+  "devDependencies": {
+    "jest": "^21.2.1",
+    "prettier": "^1.9.2"
+  },
+  "jest": {
+    "collectCoverage": true,
+    "testEnvironment": "node",
+    "coverageThreshold": {
+      "global": {
+        "branches": 100
+      }
+    }
+  },
+  "lint-staged": {
+    "*.{js,json,md}": ["prettier -l"]
   }
 }
