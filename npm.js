@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const ini = require("ini");
 const os = require("os");
+const npm = require("npm");
 
 class Npmrc {
   constructor(basePath) {
@@ -70,14 +71,11 @@ class Npmrc {
   }
 
   static getUserNpmrc() {
-    let userPath = os.homedir();
-    let npm_config_userPath = process.env["npm_config_userconfig"]; // if running in npm context, use source of truth
+    npm.load();
+    let userConfigPath = npm.config.get("userconfig");
+    userConfigPath = userConfigPath.replace(/\.npmrc$/, "");
 
-    if (npm_config_userPath) {
-      userPath = npm_config_userPath.replace(".npmrc", "");
-    }
-
-    return new Npmrc(userPath);
+    return new Npmrc(userConfigPath);
   }
 }
 

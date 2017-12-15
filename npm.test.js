@@ -1,10 +1,11 @@
 jest.mock("fs");
 jest.mock("path");
-jest.mock("os");
+jest.mock("npm");
 
 let path = require("path");
 let fs = require("fs");
 let os = require("os");
+let npm = require("npm");
 
 let { Npmrc, Registry } = require("./npm");
 
@@ -160,12 +161,14 @@ describe("In the Npm module,", () => {
 
     describe("has a method getUserNpmrc which", () => {
       test("returns an Npmrc object corresponding to the 'userconfig'", () => {
-        os.homedir.mockImplementation(() => "/foo");
-        path.join.mockImplementation((a, b) => a + "/" + b);
+        npm.config.get.mockImplementation(() => "/foobar/.npmrc");
+        path.join.mockImplementation((a, b) => {
+          return a.endsWith("/") ? a + b : a + "/" + b;
+        });
         let result = Npmrc.getUserNpmrc();
 
         expect(result).toBeInstanceOf(Npmrc);
-        expect(result).toHaveProperty("filePath", "/foo/.npmrc");
+        expect(result).toHaveProperty("filePath", "/foobar/.npmrc");
       });
     });
   });
