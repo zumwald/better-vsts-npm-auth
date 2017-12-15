@@ -1,5 +1,5 @@
 const request = require("request");
-const config = require("./config.js");
+const config = require("./config");
 
 const k_REFRESH_TOKEN = "refresh_token";
 
@@ -18,7 +18,6 @@ exports.getAuthToken = () => {
   let lab_token = process.env["SYSTEM_ACCESSTOKEN"];
   if (lab_token) {
     console.log("using SYSTEM_ACCESSTOKEN provided.");
-    config.set(k_REFRESH_TOKEN, lab_token);
     return Promise.resolve(lab_token);
   }
 
