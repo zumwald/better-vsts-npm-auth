@@ -1,7 +1,8 @@
 {
   "name": "better-vsts-npm-auth",
   "version": "1.4.1",
-  "description": "Platform agnostic library which provides a robust solution for maintaining credentials in your npmrc files",
+  "description":
+    "Platform agnostic library which provides a robust solution for maintaining credentials in your npmrc files",
   "main": "lib.js",
   "engines": {
     "yarn": ">=1.3.2",

@@ -5,6 +5,12 @@ const os = require("os");
 
 class Npmrc {
   constructor(basePath) {
+    if (!basePath) {
+      throw new Error(
+        "Npmrc constructor must be called with directory which contains the .npmrc file"
+      );
+    }
+
     this.filePath = path.join(basePath, ".npmrc");
     this.settings = {};
   }
@@ -28,14 +34,19 @@ class Npmrc {
     return new Promise((resolve, reject) => {
       fs.readFile(that.filePath, "utf8", (err, data) => {
         if (err && err.code !== "ENOENT") {
-          return reject(err);
+          reject(err);
         } else {
           try {
             console.log("config from", that.filePath);
             that.settings = ini.parse(data || "");
-            return resolve(that);
+
+            if (that.settings[""]) {
+              delete that.settings[""];
+            }
+
+            resolve(that);
           } catch (e) {
-            return reject(e);
+            reject(e);
           }
         }
       });
@@ -46,9 +57,9 @@ class Npmrc {
     return new Promise((resolve, reject) => {
       fs.writeFile(this.filePath, ini.encode(this.settings), err => {
         if (err) {
-          return reject(err);
+          reject(err);
         } else {
-          return resolve();
+          resolve();
         }
       });
     });
@@ -74,6 +85,12 @@ const AUTHTOKEN_PARTIAL_KEY = ":_authToken";
 
 class Registry {
   constructor(registryUrl) {
+    if (!registryUrl) {
+      throw new Error(
+        "Registry constructor must be called with url for the given registry"
+      );
+    }
+
     this.url = registryUrl;
     this.token = "";
 
