@@ -4,6 +4,7 @@ jest.mock("os");
 
 let path = require("path");
 let fs = require("fs");
+let os = require("os");
 
 let { Npmrc, Registry } = require("./npm");
 
@@ -130,6 +131,41 @@ describe("In the Npm module,", () => {
             .resolves.toBeInstanceOf(Npmrc)
             .then(() => expect(result).resolves.toHaveProperty("settings", {}));
         });
+      });
+    });
+
+    describe("has a method saveSettingsToFile which", () => {
+      test("rejects if there is an error writing the file", () => {
+        const someError = { error: "foo" };
+        fs.writeFile.mockImplementation((path, content, cb) => {
+          cb(someError);
+        });
+
+        return expect(foo.saveSettingsToFile()).rejects.toEqual(someError);
+      });
+
+      test("writes the ini-encoded settings", () => {
+        foo.settings = { some: "value" };
+        fs.writeFile.mockImplementation((path, content, cb) => {
+          expect(content).toContain("some=value");
+          cb(null);
+        });
+        return expect(foo.saveSettingsToFile())
+          .resolves.toBeUndefined()
+          .then(() => {
+            expect.assertions(2);
+          });
+      });
+    });
+
+    describe("has a method getUserNpmrc which", () => {
+      test("returns an Npmrc object corresponding to the 'userconfig'", () => {
+        os.homedir.mockImplementation(() => "/foo");
+        path.join.mockImplementation((a, b) => a + "/" + b);
+        let result = Npmrc.getUserNpmrc();
+
+        expect(result).toBeInstanceOf(Npmrc);
+        expect(result).toHaveProperty("filePath", "/foo/.npmrc");
       });
     });
   });

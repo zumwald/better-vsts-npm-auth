@@ -74,9 +74,13 @@ describe("The Config module", () => {
 
   describe("writes the config", () => {
     test("to disk", () => {
+      fs.writeFileSync.mockImplementation((path, content) => {
+        expect(content).toContain("foo=bar");
+      });
+
       Config.write({ foo: "bar" });
       expect(fs.writeFileSync).toHaveBeenCalledTimes(1);
-      expect(fs.writeFileSync).toHaveBeenCalledWith(undefined, "foo=bar\r\n");
+      expect.assertions(2);
     });
 
     test("and throws if there is an error", () => {
