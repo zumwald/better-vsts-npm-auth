@@ -75,7 +75,7 @@ exports.run = argv => {
       // returns the registries which need authorization
       const NOW_IN_EPOCH = Math.floor(Date.now() / 1000);
       const TOKEN_EXPIRY_MIN_EXP = Math.floor(
-        NOW_IN_EPOCH + argv.tokenExpiryGraceInMs / 1000
+        NOW_IN_EPOCH + Number(argv.tokenExpiryGraceInMs) / 1000
       );
       console.log("timestamp (since epoch):", NOW_IN_EPOCH);
       console.log("min token exp:", TOKEN_EXPIRY_MIN_EXP);

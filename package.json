@@ -12,6 +12,7 @@
   },
   "scripts": {
     "test": "jest",
+    "test:watch": "yarn run test -- --watch",
     "precommit": "lint-staged",
     "prettier": "prettier --write *.{js,json,md}"
   },
