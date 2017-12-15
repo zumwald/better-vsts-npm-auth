@@ -1,11 +1,11 @@
 jest.mock("fs");
 jest.mock("path");
-jest.mock("npm");
+jest.mock("child_process");
 
 let path = require("path");
 let fs = require("fs");
 let os = require("os");
-let npm = require("npm");
+let { execSync } = require("child_process");
 
 let { Npmrc, Registry } = require("./npm");
 
@@ -29,10 +29,16 @@ describe("In the Npm module,", () => {
         }).toThrow();
       });
 
-      test("constructs a filePath to a .npmrc file", () => {
+      test("constructs a filePath to a .npmrc file when given a directory", () => {
         path.join.mockImplementation((a, b) => a + "/" + b);
         let foo = new Npmrc("/some/path");
         expect(foo.filePath).toEqual("/some/path/.npmrc");
+      });
+
+      test("uses the filePath as given when it points to a .npmrc file", () => {
+        const weirdPath = "/some/path/with/.an-oddly_namedButValid.npmrc";
+        let foo = new Npmrc(weirdPath);
+        expect(foo.filePath).toEqual(weirdPath);
       });
 
       test("initialized an empty settings object", () => {
@@ -161,7 +167,7 @@ describe("In the Npm module,", () => {
 
     describe("has a method getUserNpmrc which", () => {
       test("returns an Npmrc object corresponding to the 'userconfig'", () => {
-        npm.config.get.mockImplementation(() => "/foobar/.npmrc");
+        execSync.mockImplementation(() => "/foobar/.npmrc\r\n");
         path.join.mockImplementation((a, b) => {
           return a.endsWith("/") ? a + b : a + "/" + b;
         });

@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const ini = require("ini");
 const os = require("os");
-const npm = require("npm");
+const { execSync } = require("child_process");
 
 class Npmrc {
   constructor(basePath) {
@@ -12,7 +12,11 @@ class Npmrc {
       );
     }
 
-    this.filePath = path.join(basePath, ".npmrc");
+    if (!basePath.endsWith(".npmrc")) {
+      basePath = path.join(basePath, ".npmrc");
+    }
+
+    this.filePath = basePath;
     this.settings = {};
   }
 
@@ -71,9 +75,9 @@ class Npmrc {
   }
 
   static getUserNpmrc() {
-    npm.load();
-    let userConfigPath = npm.config.get("userconfig");
-    userConfigPath = userConfigPath.replace(/\.npmrc$/, "");
+    let userConfigPath = execSync("npm config get userconfig")
+      .toString()
+      .trim();
 
     return new Npmrc(userConfigPath);
   }
