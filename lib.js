@@ -50,26 +50,38 @@ exports.run = argv => {
       // get project registries which we need credentials for (restrict to
       // visualstudio.com hosted registries)
       const isVstsFeedUrl = r =>
-        r && r.indexOf && r.indexOf("pkgs.visualstudio.com/_packaging") > -1;
+        r &&
+        r.url &&
+        r.url.indexOf &&
+        r.url.indexOf("pkgs.visualstudio.com/_packaging") > -1;
       let projectRegistries = npmrcResults.projectNpmrc
         .getRegistries()
-        .filter(r => isVstsFeedUrl(r.url || ""));
+        .filter(isVstsFeedUrl);
+      let userRegistries = npmrcResults.userNpmrc
+        .getRegistries()
+        .filter(isVstsFeedUrl);
+
       console.log(
         "Found the following project registries needed for the",
         argv.npmrcPath,
         "project:\n",
-        projectRegistries.map(r => "\t" + r.url).join("\n")
+        []
+          .concat(projectRegistries, userRegistries)
+          .map(r => "\t" + r.url)
+          .join("\n")
       );
 
       // hydrate token info for registries for which we already have auth
-      projectRegistries.forEach(r => {
+      const hydrateAuthKeysForRegistry = r => {
         let authKeys = r.getAuthKeys();
         let authKey = authKeys && authKeys[0];
 
         if (authKey) {
           r.token = npmrcResults.userNpmrc.settings[authKey];
         }
-      });
+      };
+      projectRegistries.forEach(hydrateAuthKeysForRegistry);
+      userRegistries.forEach(hydrateAuthKeysForRegistry);
 
       // if the registry has a token, ensure it's not expiring
       // returns the registries which need authorization
@@ -80,7 +92,7 @@ exports.run = argv => {
       console.log("timestamp (since epoch):", NOW_IN_EPOCH);
       console.log("min token exp:", TOKEN_EXPIRY_MIN_EXP);
       const ADD_TOKEN_MSG = "adding it to list of tokens to retrieve";
-      projectRegistries = projectRegistries.filter(r => {
+      const registryDoesNeedNewToken = r => {
         // filter the registries to only return those which are
         // missing a token, or that have a token that is about
         // to expire
@@ -112,7 +124,10 @@ exports.run = argv => {
         // token exists and was a valid JWT within the expiry,
         // no need to process the registry
         return false;
-      });
+      };
+
+      projectRegistries = projectRegistries.filter(registryDoesNeedNewToken);
+      userRegistries = userRegistries.filter(registryDoesNeedNewToken);
 
       return vstsAuth
         .getAuthToken()
@@ -145,14 +160,27 @@ exports.run = argv => {
               resolve();
             }
           }).then(() => {
-            let newConfig = projectRegistries.reduce((c, r) => {
+            const settingsReducer = (c, r) => {
               r.getAuthKeys().forEach(k => {
                 c[k] = accessToken;
               });
               return c;
-            }, {});
+            };
 
-            Object.assign(npmrcResults.userNpmrc.settings, newConfig);
+            let newProjectConfigSettings = projectRegistries.reduce(
+              settingsReducer,
+              {}
+            );
+            let newUserConfigSettings = userRegistries.reduce(
+              settingsReducer,
+              {}
+            );
+            Object.assign(
+              npmrcResults.userNpmrc.settings,
+              newProjectConfigSettings,
+              newUserConfigSettings
+            );
+
             return npmrcResults.userNpmrc.saveSettingsToFile();
           });
         })
