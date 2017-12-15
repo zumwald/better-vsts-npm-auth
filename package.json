@@ -1,8 +1,7 @@
 {
   "name": "better-vsts-npm-auth",
-  "version": "1.4.1",
-  "description":
-    "Platform agnostic library which provides a robust solution for maintaining credentials in your npmrc files",
+  "version": "2.2.0",
+  "description": "Platform agnostic library which provides a robust solution for maintaining credentials in your npmrc files",
   "main": "lib.js",
   "engines": {
     "yarn": ">=1.3.2",
@@ -32,6 +31,7 @@
   },
   "devDependencies": {
     "jest": "^21.2.1",
+    "lint-staged": "^6.0.0",
     "prettier": "^1.9.2"
   },
   "jest": {
@@ -44,6 +44,8 @@
     }
   },
   "lint-staged": {
-    "*.{js,json,md}": ["prettier -l"]
+    "*.{js,json,md}": [
+      "prettier -l"
+    ]
   }
 }
