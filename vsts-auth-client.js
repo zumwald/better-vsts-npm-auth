@@ -9,6 +9,7 @@ class AuthorizationError extends Error {
   }
 }
 
+exports.usingVstsOauthToken = () => !!process.env["SYSTEM_ACCESSTOKEN"];
 exports.AuthorizationError = AuthorizationError;
 exports.setRefreshToken = t => config.set(k_REFRESH_TOKEN, t);
 exports.getAuthToken = () => {
@@ -18,6 +19,7 @@ exports.getAuthToken = () => {
   let lab_token = process.env["SYSTEM_ACCESSTOKEN"];
   if (lab_token) {
     console.log("using SYSTEM_ACCESSTOKEN provided.");
+    _usingVstsOauthToken = true;
     return Promise.resolve(lab_token);
   }
 

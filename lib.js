@@ -93,6 +93,14 @@ exports.run = argv => {
       console.log("min token exp:", TOKEN_EXPIRY_MIN_EXP);
       const ADD_TOKEN_MSG = "adding it to list of tokens to retrieve";
       const registryDoesNeedNewToken = r => {
+        // note: if we're using the SYSTEM_ACCESSTOKEN, we can
+        // only use it within the project collection
+        if (
+          vstsAuth.usingVstsOauthToken() &&
+          process.env["SYSTEM_TEAMFOUNDATIONCOLLECTIONURI"].indexOf(r.project + ".visualstudio.com") === -1
+        ) {
+          return false;
+        }
         // filter the registries to only return those which are
         // missing a token, or that have a token that is about
         // to expire
