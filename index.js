@@ -2,9 +2,9 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const jwt = require("jsonwebtoken");
-const npm = require("./npm.js");
-const config = require("./config.js");
-const vstsAuth = require("./vsts-auth-client.js");
+const npm = require("./lib/npm.js");
+const config = require("./lib/config.js");
+const vstsAuth = require("./lib/vsts-auth-client.js");
 const openUrl = require("openurl2").open;
 const uuid = require("uuid/v4");
 

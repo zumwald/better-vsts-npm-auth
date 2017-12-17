@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-const config = require("./config.js");
+const config = require("./lib/config.js");
+const task = require("./index.js");
 const input = require("input");
 
 let runningCmd = false;
@@ -88,8 +89,6 @@ const argv = require("yargs")
     handler: commandBuilder(CONFIG_GETTER)
   })
   .help().argv;
-
-const task = require("./lib.js");
 
 // safety first - handle and exit non-zero if we run into issues
 let abortProcess = e => {
