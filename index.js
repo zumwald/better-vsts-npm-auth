@@ -2,9 +2,10 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const jwt = require("jsonwebtoken");
-const npm = require("./lib/npm.js");
+const { Npmrc, Registry } = require("./lib/npm.js");
 const config = require("./lib/config.js");
 const vstsAuth = require("./lib/vsts-auth-client.js");
+const { RegistryAuthReducer } = require("./lib/registry-auth-reducer");
 const openUrl = require("openurl2").open;
 const uuid = require("uuid/v4");
 
@@ -31,191 +32,69 @@ const uuid = require("uuid/v4");
  */
 
 exports.setRefreshToken = vstsAuth.setRefreshToken;
+
+/**
+ * @param {Object} e
+ * @returns {boolean}
+ */
 exports.isAuthorizationError = e => e instanceof vstsAuth.AuthorizationError;
-exports.run = argv => {
-  // argv is optional, if it's not provided then load the default config
-  argv = argv || config.get();
-  // set default for npmrcPath
-  argv.npmrcPath = argv.npmrcPath || process.cwd();
+
+/**
+ * @param {Object} options
+ * @param {string} options.configOverride
+ * @param {string} options.npmrcPath
+ */
+exports.run = options => {
+  if (options.configOverride) {
+    config.setConfigPath(options.configOverride);
+  }
+
+  let configObj = config.get();
+  // if npmrcPath isn't specified, default is the working directory
+  options.npmrcPath = options.npmrcPath || process.cwd();
 
   return Promise.all([
-    npm.Npmrc.getUserNpmrc().readSettingsFromFile(),
-    new npm.Npmrc(argv.npmrcPath).readSettingsFromFile()
+    Npmrc.getUserNpmrc().readSettingsFromFile(),
+    new Npmrc(options.npmrcPath).readSettingsFromFile()
   ])
     .then(npmrcResults => ({
       userNpmrc: npmrcResults[0],
       projectNpmrc: npmrcResults[1]
     }))
     .then(npmrcResults => {
-      // get project registries which we need credentials for (restrict to
-      // visualstudio.com hosted registries)
-      const isVstsFeedUrl = r =>
-        r &&
-        r.url &&
-        r.url.indexOf &&
-        r.url.indexOf("pkgs.visualstudio.com/_packaging") > -1;
-      let projectRegistries = npmrcResults.projectNpmrc
-        .getRegistries()
-        .filter(isVstsFeedUrl);
-      let userRegistries = npmrcResults.userNpmrc
-        .getRegistries()
-        .filter(isVstsFeedUrl);
-
-      console.log(
-        "Found the following project registries needed for the",
-        argv.npmrcPath,
-        "project:\n",
-        []
-          .concat(projectRegistries, userRegistries)
-          .map(r => "\t" + r.url)
-          .join("\n")
+      let authenticatedRegistries = RegistryAuthReducer.authenticateRegistries(
+        npmrcResults.projectNpmrc.getRegistries(),
+        npmrcResults.userNpmrc.getRegistries()
       );
 
-      // hydrate token info for registries for which we already have auth
-      const hydrateAuthKeysForRegistry = r => {
-        let authKeys = r.getAuthKeys();
-        let authKey = authKeys && authKeys[0];
+      // get the new settings which need to be written to the user npmrc file
+      let authSettings = authenticatedRegistries.map(r => r.getAuthSettings());
+      Object.assign(npmrcResults.userNpmrc.settings, ...authSettings);
+    })
+    .catch(e => {
+      // if this is running in a CI environment, reject to signal failure
+      // otherwise, open the auth page as the error is likely due to
+      // the user needing to authorize the app and/or configure their
+      // refresh_token
+      if (!process.env.BUILD_BUILDID && !process.env.RELEASE_RELEASEID) {
+        let consentUrl = `https://app.vssps.visualstudio.com/oauth2/authorize?client_id=${
+          configObj.clientId
+        }&response_type=Assertion&state=${uuid()}&scope=vso.packaging_write&redirect_uri=${
+          configObj.redirectUri
+        }`;
 
-        if (authKey) {
-          r.token = npmrcResults.userNpmrc.settings[authKey];
+        console.log(
+          "We need user consent before this script can run. Follow instructions in the browser window that just opened " +
+            `and then you can run this script again. If a browser does not open, paste ${consentUrl} into your browser window and follow ` +
+            "the instructions to grant permissions."
+        );
+
+        if (os.platform() !== "win32") {
+          openUrl(consentUrl); // only try to open on *nix systems, Windows refuses to cooperate
         }
-      };
-      projectRegistries.forEach(hydrateAuthKeysForRegistry);
-      userRegistries.forEach(hydrateAuthKeysForRegistry);
+      }
 
-      // if the registry has a token, ensure it's not expiring
-      // returns the registries which need authorization
-      const NOW_IN_EPOCH = Math.floor(Date.now() / 1000);
-      const TOKEN_EXPIRY_MIN_EXP = Math.floor(
-        NOW_IN_EPOCH + Number(argv.tokenExpiryGraceInMs) / 1000
-      );
-      console.log("timestamp (since epoch):", NOW_IN_EPOCH);
-      console.log("min token exp:", TOKEN_EXPIRY_MIN_EXP);
-      const ADD_TOKEN_MSG = "adding it to list of tokens to retrieve";
-      const registryDoesNeedNewToken = r => {
-        // note: if we're using the SYSTEM_ACCESSTOKEN, we can
-        // only use it within the project collection
-        if (
-          vstsAuth.usingVstsOauthToken() &&
-          process.env["SYSTEM_TEAMFOUNDATIONCOLLECTIONURI"].indexOf(r.project + ".visualstudio.com") === -1
-        ) {
-          return false;
-        }
-        // filter the registries to only return those which are
-        // missing a token, or that have a token that is about
-        // to expire
-        if (!r.token) {
-          console.log("Token for", r.url, "does not exist;", ADD_TOKEN_MSG);
-          return true;
-        } else {
-          let decodedToken = jwt.decode(r.token);
-
-          // if token is invalid or expires in less than a week,
-          // replace it with an empty token
-          if (
-            !decodedToken ||
-            !decodedToken.exp ||
-            decodedToken.exp < TOKEN_EXPIRY_MIN_EXP
-          ) {
-            console.log(
-              "Token for",
-              r.url,
-              "will expire at",
-              decodedToken.exp,
-              ",",
-              ADD_TOKEN_MSG
-            );
-            return true;
-          }
-        }
-
-        // token exists and was a valid JWT within the expiry,
-        // no need to process the registry
-        return false;
-      };
-
-      projectRegistries = projectRegistries.filter(registryDoesNeedNewToken);
-      userRegistries = userRegistries.filter(registryDoesNeedNewToken);
-
-      return vstsAuth
-        .getAuthToken()
-        .then(accessToken => {
-          let newTokenDecoded = jwt.decode(accessToken);
-          console.log(
-            "\nnew token received:",
-            "\n\tnbf:",
-            newTokenDecoded && newTokenDecoded.nbf,
-            "\n\texp:",
-            newTokenDecoded && newTokenDecoded.exp,
-            "\n\tscope:",
-            newTokenDecoded && newTokenDecoded.scp
-          );
-
-          return new Promise((resolve, reject) => {
-            // VSTS auth service doesn't accomodate clock skew well
-            // in these "JIT" scenarios. Check if the token nbf is
-            // after our time, and wait for the difference if it is.
-            if (newTokenDecoded.nbf > NOW_IN_EPOCH) {
-              const timeToWaitInMs =
-                Math.floor(newTokenDecoded.nbf - NOW_IN_EPOCH) * 1000;
-              console.log(
-                "waiting out clock skew of",
-                timeToWaitInMs,
-                "milliseconds."
-              );
-              setTimeout(() => resolve(), timeToWaitInMs);
-            } else {
-              resolve();
-            }
-          }).then(() => {
-            const settingsReducer = (c, r) => {
-              r.getAuthKeys().forEach(k => {
-                c[k] = accessToken;
-              });
-              return c;
-            };
-
-            let newProjectConfigSettings = projectRegistries.reduce(
-              settingsReducer,
-              {}
-            );
-            let newUserConfigSettings = userRegistries.reduce(
-              settingsReducer,
-              {}
-            );
-            Object.assign(
-              npmrcResults.userNpmrc.settings,
-              newProjectConfigSettings,
-              newUserConfigSettings
-            );
-
-            return npmrcResults.userNpmrc.saveSettingsToFile();
-          });
-        })
-        .catch(e => {
-          // if this is running in a CI environment, reject to signal failure
-          // otherwise, open the auth page as the error is likely due to
-          // the user needing to authorize the app and/or configure their
-          // refresh_token
-          if (!process.env.BUILD_BUILDID && !process.env.RELEASE_RELEASEID) {
-            let consentUrl = `https://app.vssps.visualstudio.com/oauth2/authorize?client_id=${
-              argv.clientId
-            }&response_type=Assertion&state=${uuid()}&scope=vso.packaging_write&redirect_uri=${
-              argv.redirectUri
-            }`;
-            console.log(
-              "We need user consent before this script can run. Follow instructions in the browser window that just opened " +
-                `and then you can run this script again. If a browser does not open, paste ${consentUrl} into your browser window and follow ` +
-                "the instructions to grant permissions."
-            );
-            let os = require("os");
-            if (os.platform() !== "win32") {
-              openUrl(consentUrl); // only try to open on *nix systems, Windows refuses to cooperate
-            }
-          }
-
-          // no matter what, we error out here
-          return Promise.reject(e);
-        });
+      // no matter what, we error out here
+      return Promise.reject(e);
     });
 };
