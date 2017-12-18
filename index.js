@@ -1,7 +1,6 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const jwt = require("jsonwebtoken");
 const { Npmrc, Registry } = require("./lib/npm.js");
 const config = require("./lib/config.js");
 const vstsAuth = require("./lib/vsts-auth-client.js");
