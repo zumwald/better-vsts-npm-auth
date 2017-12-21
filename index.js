@@ -62,13 +62,19 @@ exports.run = options => {
     }))
     .then(npmrcResults => {
       let authenticatedRegistries = RegistryAuthReducer.authenticateRegistries(
-        npmrcResults.projectNpmrc.getRegistries(),
-        npmrcResults.userNpmrc.getRegistries()
+        ...npmrcResults.projectNpmrc.getRegistries(),
+        ...npmrcResults.userNpmrc.getRegistries()
       );
 
       // get the new settings which need to be written to the user npmrc file
-      let authSettings = authenticatedRegistries.map(r => r.getAuthSettings());
-      Object.assign(npmrcResults.userNpmrc.settings, ...authSettings);
+      return authenticatedRegistries.then(_authenticatedRegistries => {
+        let authSettings = _authenticatedRegistries.map(r =>
+          r.getAuthSettings()
+        );
+        Object.assign(npmrcResults.userNpmrc.settings, ...authSettings);
+        
+        return npmrcResults.userNpmrc.saveSettingsToFile();
+      });
     })
     .catch(e => {
       // if this is running in a CI environment, reject to signal failure
