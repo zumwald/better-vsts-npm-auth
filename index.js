@@ -68,11 +68,15 @@ exports.run = options => {
 
       // get the new settings which need to be written to the user npmrc file
       return authenticatedRegistries.then(_authenticatedRegistries => {
+        console.log(
+          "Authenticating the following registries:\n",
+          _authenticatedRegistries.map(r => `\t${r.url}\n`).join("")
+        );
         let authSettings = _authenticatedRegistries.map(r =>
           r.getAuthSettings()
         );
         Object.assign(npmrcResults.userNpmrc.settings, ...authSettings);
-        
+
         return npmrcResults.userNpmrc.saveSettingsToFile();
       });
     })
