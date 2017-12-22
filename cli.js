@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-const config = require("./config.js");
+const config = require("./lib/config.js");
+const task = require("./index.js");
 const input = require("input");
 
 let runningCmd = false;
@@ -54,8 +55,8 @@ const argv = require("yargs")
   .usage("Usage: $0 [command] [options]")
   .example("$0", "process the local .npmrc file")
   .example(
-    "$0 -c /foo/bar/.npmrc",
-    "process the .npmrc file located at /foo/bar"
+    "$0 -n /foo/bar/.npmrc -c /baz/bang/.bettervstsnpmauthcfg",
+    "process the .npmrc file located at /foo/bar, use /baz/bang/.bettervstsnpmauthcfg as the config file"
   )
   .example("$0 config foo bar", 'set a config value "foo" to be "bar"')
   .options("n", {
@@ -63,7 +64,11 @@ const argv = require("yargs")
     describe: "path to npmrc config",
     type: "string"
   })
-  .config(config.get())
+  .options("c", {
+    alias: "configOverride",
+    describe: "alternate path to this tool's configuration file",
+    type: "string"
+  })
   .command({
     command: "config [command]",
     desc: 'modify the config (run "config --help" for more info)',
@@ -88,8 +93,6 @@ const argv = require("yargs")
     handler: commandBuilder(CONFIG_GETTER)
   })
   .help().argv;
-
-const task = require("./lib.js");
 
 // safety first - handle and exit non-zero if we run into issues
 let abortProcess = e => {
