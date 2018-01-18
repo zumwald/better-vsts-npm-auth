@@ -50,7 +50,7 @@ vstsAuth.run()
                 // seamless local dev startup experience by re-running
                 return vstsAuth.run();
             })
-      });
+      }});
 ```
 
 ## Dependency on [stateless-vsts-oauth](https://github.com/zumwald/stateless-vsts-oauth)
