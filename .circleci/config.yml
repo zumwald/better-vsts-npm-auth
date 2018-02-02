@@ -6,4 +6,4 @@ jobs:
      steps:
        - checkout
        - run: yarn install --frozen-lockfile
-       - run: yarn run test --all
+       - run: yarn run test:ci
