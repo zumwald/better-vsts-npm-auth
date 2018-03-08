@@ -9,7 +9,7 @@
     "node": ">=6"
   },
   "bin": {
-    "better-vsts-npm-auth": "./dist/cli.js"
+    "better-vsts-npm-auth": "dist/cli.js"
   },
   "scripts": {
     "ci": "yarn run build && yarn run test:ci",
