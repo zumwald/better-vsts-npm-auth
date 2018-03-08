@@ -1,12 +1,10 @@
 jest.mock("fs");
-jest.mock("os");
 jest.mock("path");
 
-let Config = require("./config");
+import { Config } from "./config";
 
 // mocked modules
 let fs = require("fs");
-let os = require("os");
 let ini = require("ini");
 
 describe("The Config module", () => {
@@ -30,7 +28,7 @@ describe("The Config module", () => {
     test("the given location when overridden", () => {
       let configOverridePath = "/foo/bar";
 
-      fs.writeFileSync.mockImplementation(p => {
+      fs.writeFileSync.mockImplementation((p: string) => {
         expect(p).toEqual(configOverridePath);
       });
 
@@ -40,7 +38,7 @@ describe("The Config module", () => {
     });
 
     test("the default location when not overridden", () => {
-      fs.writeFileSync.mockImplementation(p => {
+      fs.writeFileSync.mockImplementation((p: string) => {
         expect(p).toBeUndefined();
       });
 
@@ -86,7 +84,7 @@ describe("The Config module", () => {
     test("and does not throw an error if the file does not exist yet", () => {
       fs.readFileSync.mockImplementation(() => {
         let e = new Error("ENOENT");
-        e.code = "ENOENT";
+        (e as any).code = "ENOENT";
         throw e;
       });
 
@@ -98,7 +96,7 @@ describe("The Config module", () => {
 
   describe("writes the config", () => {
     test("to disk", () => {
-      fs.writeFileSync.mockImplementation((path, content) => {
+      fs.writeFileSync.mockImplementation((_path: string, content: string) => {
         expect(content).toContain("foo=bar");
       });
 
@@ -122,7 +120,7 @@ describe("The Config module", () => {
     let configContents = "";
 
     beforeEach(() => {
-      fs.writeFileSync.mockImplementation((path, content) => {
+      fs.writeFileSync.mockImplementation((_path: string, content: string) => {
         configContents = content;
       });
 

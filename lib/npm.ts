@@ -1,20 +1,25 @@
-const fs = require("fs");
-const path = require("path");
-const ini = require("ini");
-const os = require("os");
-const { execSync } = require("child_process");
+import * as fs from "fs";
+import * as path from "path";
+import * as ini from "ini";
+import { execSync } from "child_process";
 
 const AUTHTOKEN_PARTIAL_KEY = ":_authToken";
+
+export interface INpmSettings {
+  [key: string]: string;
+}
 
 /**
  * Represents an .npmrc configuration file and presents an interface
  * for interactions with it.
  */
-class Npmrc {
+export class Npmrc {
+  public filePath: string;
+  public settings: INpmSettings;
   /**
    * @param {string} basePath - path to .npmrc file or directory containing .npmrc file
    */
-  constructor(basePath) {
+  constructor(basePath: string) {
     if (!basePath) {
       throw new Error(
         "Npmrc constructor must be called with directory which contains the .npmrc file"
@@ -35,9 +40,9 @@ class Npmrc {
    * it finds.
    * @returns {Registry[]}
    */
-  getRegistries() {
+  getRegistries(): Array<Registry> {
     let settingsKeys = Object.getOwnPropertyNames(this.settings);
-    let registries = [];
+    let registries: Array<Registry> = [];
 
     settingsKeys.forEach(key => {
       if (key.indexOf("registry") > -1) {
@@ -52,12 +57,11 @@ class Npmrc {
    * Reads the contents of the .npmrc file corresponding
    * to this object then parses and initializes settings.
    * When finished, returns this object.
-   * @returns {Promise<Npmrc>}
    */
-  readSettingsFromFile() {
+  async readSettingsFromFile(): Promise<Npmrc> {
     let that = this;
 
-    return new Promise((resolve, reject) => {
+    return new Promise<Npmrc>((resolve, reject) => {
       fs.readFile(that.filePath, "utf8", (err, data) => {
         if (err && err.code !== "ENOENT") {
           reject(err);
@@ -83,9 +87,8 @@ class Npmrc {
    * Encodes this object's settings and then
    * writes them to disk at the .npmrc location
    * the object was instantiated from.
-   * @returns {Promise<void>}
    */
-  saveSettingsToFile() {
+  async saveSettingsToFile() {
     return new Promise((resolve, reject) => {
       fs.writeFile(this.filePath, ini.encode(this.settings), err => {
         if (err) {
@@ -99,19 +102,16 @@ class Npmrc {
 
   /**
    * Checks whether the given key is an auth setting.
-   * @param {string} key
-   * @returns {boolean}
    */
-  static isAuthSetting(key) {
+  static isAuthSetting(key: string): boolean {
     return key.indexOf(AUTHTOKEN_PARTIAL_KEY) > -1;
   }
 
   /**
    * Reads NPM settings to determine the location of the
    * userconfig and creates an Npmrc object for it.
-   * @returns {Npmrc}
    */
-  static getUserNpmrc() {
+  static getUserNpmrc(): Npmrc {
     let userConfigPath = execSync("npm config get userconfig")
       .toString()
       .trim();
@@ -120,14 +120,23 @@ class Npmrc {
   }
 }
 
+export interface IBasicAuthSettings extends INpmSettings {
+  username: string;
+  password: string;
+  email: string;
+}
+
 /**
  * An abstraction for an npm registry configuration entry
  */
-class Registry {
-  /**
-   * @param {string} registryUrl
-   */
-  constructor(registryUrl) {
+export class Registry {
+  public url: string;
+  public token: string;
+  public basicAuthSettings: IBasicAuthSettings;
+  public feed: string;
+  public project: string;
+
+  constructor(registryUrl: string) {
     if (!registryUrl) {
       throw new Error(
         "Registry constructor must be called with url for the given registry"
@@ -136,7 +145,11 @@ class Registry {
 
     this.url = registryUrl;
     this.token = "";
-    this.basicAuthSettings = {};
+    this.basicAuthSettings = {
+      username: null,
+      password: null,
+      email: null
+    };
 
     let feedResult = /_packaging\/(.*)\/npm\/registry/i.exec(registryUrl);
     let projectResult = /https?:\/\/(.*)\.pkgs\.visualstudio/i.exec(
@@ -149,10 +162,9 @@ class Registry {
 
   /**
    * Returns the auth settings for this Registry
-   * @returns {Object.<string, string>}
    */
-  getAuthSettings() {
-    let result = {};
+  getAuthSettings(): INpmSettings {
+    let result: INpmSettings = {};
 
     if (this.token) {
       let match = /https?:(.*)registry/gi.exec(this.url);
@@ -161,11 +173,9 @@ class Registry {
       result[`${identifier}${AUTHTOKEN_PARTIAL_KEY}`] = this.token;
       result[`${identifier}registry/${AUTHTOKEN_PARTIAL_KEY}`] = this.token;
     } else {
-      result = this.basicAuthSettings;
+      result = this.basicAuthSettings as INpmSettings;
     }
 
     return result;
   }
 }
-
-module.exports = { Npmrc, Registry };

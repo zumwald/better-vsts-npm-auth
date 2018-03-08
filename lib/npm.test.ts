@@ -4,10 +4,9 @@ jest.mock("child_process");
 
 let path = require("path");
 let fs = require("fs");
-let os = require("os");
 let { execSync } = require("child_process");
 
-let { Npmrc, Registry } = require("./npm");
+import { Registry, Npmrc } from "./npm";
 
 describe("In the Npm module,", () => {
   afterEach(() => {
@@ -19,18 +18,12 @@ describe("In the Npm module,", () => {
     /**
      * @type {Npmrc}
      */
-    let foo;
+    let foo: Npmrc;
     beforeEach(() => (foo = new Npmrc("foo")));
 
     describe("has a constructor which", () => {
-      test("should always be called with a basepath", () => {
-        expect(() => {
-          let foo = new Npmrc();
-        }).toThrow();
-      });
-
       test("constructs a filePath to a .npmrc file when given a directory", () => {
-        path.join.mockImplementation((a, b) => a + "/" + b);
+        path.join.mockImplementation((a: string, b: string) => a + "/" + b);
         let foo = new Npmrc("/some/path");
         expect(foo.filePath).toEqual("/some/path/.npmrc");
       });
@@ -54,7 +47,7 @@ describe("In the Npm module,", () => {
 
       test("returns an empty array when none of the settings are registreies", () => {
         foo.settings = {
-          "always-auth": true,
+          "always-auth": "true",
           cache: "some/path"
         };
 
@@ -66,7 +59,7 @@ describe("In the Npm module,", () => {
         const myprivateregistry = "https://private.myregistry.com";
 
         foo.settings = {
-          "always-auth": false,
+          "always-auth": "false",
           cache: "some/path",
           registry: myregistry,
           "@myscope:registry": myprivateregistry
@@ -83,7 +76,7 @@ describe("In the Npm module,", () => {
 
     describe("has a method readSettingsFromFile which", () => {
       test("rejects when there is an error reading the npmrc file", () => {
-        fs.readFile.mockImplementation((a, b, cb) => {
+        fs.readFile.mockImplementation((_a: any, _b: any, cb: Function) => {
           cb({ code: "ERROR" });
         });
 
@@ -94,7 +87,7 @@ describe("In the Npm module,", () => {
       });
 
       test("resolves settings as JSON from .npmrc file with entries", () => {
-        fs.readFile.mockImplementation((a, b, cb) => {
+        fs.readFile.mockImplementation((_a: any, _b: any, cb: Function) => {
           cb(null, "this=that\r\n   \n \t\n other=thing");
         });
 
@@ -106,7 +99,7 @@ describe("In the Npm module,", () => {
 
       describe("resolves settings as empty JSON when .npmrc", () => {
         test("is empty", () => {
-          fs.readFile.mockImplementation((a, b, cb) => {
+          fs.readFile.mockImplementation((_a: any, _b: any, cb: Function) => {
             cb(null, "");
           });
 
@@ -117,7 +110,7 @@ describe("In the Npm module,", () => {
         });
 
         test("is whitespace", () => {
-          fs.readFile.mockImplementation((a, b, cb) => {
+          fs.readFile.mockImplementation((_a: any, _b: any, cb: Function) => {
             cb(null, "\r\n\t  ");
           });
 
@@ -128,7 +121,7 @@ describe("In the Npm module,", () => {
         });
 
         test("does not exist", () => {
-          fs.readFile.mockImplementation((a, b, cb) => {
+          fs.readFile.mockImplementation((_a: any, _b: any, cb: Function) => {
             cb({ code: "ENOENT" });
           });
 
@@ -144,19 +137,23 @@ describe("In the Npm module,", () => {
     describe("has a method saveSettingsToFile which", () => {
       test("rejects if there is an error writing the file", () => {
         const someError = { error: "foo" };
-        fs.writeFile.mockImplementation((path, content, cb) => {
-          cb(someError);
-        });
+        fs.writeFile.mockImplementation(
+          (_path: string, _content: string, cb: Function) => {
+            cb(someError);
+          }
+        );
 
         return expect(foo.saveSettingsToFile()).rejects.toEqual(someError);
       });
 
       test("writes the ini-encoded settings", () => {
         foo.settings = { some: "value" };
-        fs.writeFile.mockImplementation((path, content, cb) => {
-          expect(content).toContain("some=value");
-          cb(null);
-        });
+        fs.writeFile.mockImplementation(
+          (_path: string, content: string, cb: Function) => {
+            expect(content).toContain("some=value");
+            cb(null);
+          }
+        );
         return expect(foo.saveSettingsToFile())
           .resolves.toBeUndefined()
           .then(() => {
@@ -168,7 +165,7 @@ describe("In the Npm module,", () => {
     describe("has a method getUserNpmrc which", () => {
       test("returns an Npmrc object corresponding to the 'userconfig'", () => {
         execSync.mockImplementation(() => "/foobar/.npmrc\r\n");
-        path.join.mockImplementation((a, b) => {
+        path.join.mockImplementation((a: string, b: string) => {
           return a.endsWith("/") ? a + b : a + "/" + b;
         });
         let result = Npmrc.getUserNpmrc();
@@ -181,17 +178,11 @@ describe("In the Npm module,", () => {
 
   describe("the Registry class", () => {
     describe("has a constructor which", () => {
-      test("should always be called with a registry url", () => {
-        expect(() => {
-          let foo = new Registry();
-        }).toThrow();
-      });
-
       describe("constructs an object", () => {
         let feed = "npm-mirror";
         let project = "foobar";
         let fakeRegistry = `https://${project}.pkgs.visualstudio.com/_packaging/${feed}/npm/registry/`;
-        let o;
+        let o: Registry;
         beforeAll(() => {
           o = new Registry(fakeRegistry);
         });
@@ -220,15 +211,19 @@ describe("In the Npm module,", () => {
       /**
        * @type {Registry}
        */
-      let o;
+      let o: Registry;
       beforeEach(() => {
         o = new Registry(
           "https://foobar.pkgs.visualstudio.com/_packaging/npm-mirror/npm/registry/"
         );
       });
       afterEach(() => (o = undefined));
-      test("returns an empty object if the Registry does not have a token", () => {
-        expect(o.getAuthSettings()).toEqual({});
+      test("returns an object with null values if the Registry does not have a token", () => {
+        expect(o.getAuthSettings()).toEqual({
+          email: null,
+          password: null,
+          username: null
+        });
       });
       test("returns two keys, one with and one without the 'registry/' suffix", () => {
         const fakeToken = "foo";
@@ -236,8 +231,10 @@ describe("In the Npm module,", () => {
 
         let result = o.getAuthSettings();
 
-        const k_withoutRegistrySuffix = "//foobar.pkgs.visualstudio.com/_packaging/npm-mirror/npm/:_authToken";
-        const k_withRegistrySuffix = "//foobar.pkgs.visualstudio.com/_packaging/npm-mirror/npm/registry/:_authToken"
+        const k_withoutRegistrySuffix =
+          "//foobar.pkgs.visualstudio.com/_packaging/npm-mirror/npm/:_authToken";
+        const k_withRegistrySuffix =
+          "//foobar.pkgs.visualstudio.com/_packaging/npm-mirror/npm/registry/:_authToken";
 
         expect(Object.getOwnPropertyNames(result)).toHaveLength(2);
         expect(result[k_withoutRegistrySuffix]).toEqual(fakeToken);

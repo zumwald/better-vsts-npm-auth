@@ -1,14 +1,13 @@
-const fs = require("fs");
-const os = require("os");
-const path = require("path");
-const ini = require("ini");
+import { writeFileSync, readFileSync } from "fs";
+import { homedir } from "os";
+import { join } from "path";
+import { encode, parse } from "ini";
 
-const DEFAULT_CONFIG_PATH = path.join(os.homedir(), ".vstsnpmauthrc");
-let configPathOverride = undefined;
-/**
- * @returns{string}
- */
-const getConfigPath = () => configPathOverride ? configPathOverride : DEFAULT_CONFIG_PATH;
+const DEFAULT_CONFIG_PATH = join(homedir(), ".vstsnpmauthrc");
+let configPathOverride: string = undefined;
+
+const getConfigPath = (): string =>
+  configPathOverride ? configPathOverride : DEFAULT_CONFIG_PATH;
 
 const defaults = {
   clientId: "DE516D90-B63E-4994-BA64-881EA988A9D2",
@@ -17,27 +16,28 @@ const defaults = {
   tokenExpiryGraceInMs: "1800000"
 };
 
+export interface IConfigDictionary {
+  [key: string]: string;
+}
+
 /**
  * Represents the user configuration for better-vsts-npm-auth
  * and presents an interface for interactions with it.
  */
-class Config {
+export class Config {
   /**
    * Uses the given path as the location for the module's
    * configuration file instead of the default.
-   * @param {string} path 
    */
-  static setConfigPath(path) {
+  static setConfigPath(path: string) {
     configPathOverride = path;
   }
 
   /**
    * Adds or updates the given setting and writes it
    * to the configuration file.
-   * @param {string} key 
-   * @param {string} val 
    */
-  static set(key, val) {
+  static set(key: string, val: string) {
     let configObj = Config.get();
 
     configObj[key] = val;
@@ -48,27 +48,25 @@ class Config {
   /**
    * Forces a write of the given object to the
    * configuration file.
-   * @param {Object} obj 
    */
-  static write(obj) {
-    let configContents = ini.encode(obj);
+  static write(obj: IConfigDictionary) {
+    let configContents = encode(obj);
     let configPath = getConfigPath();
-    fs.writeFileSync(configPath, configContents);
+    writeFileSync(configPath, configContents);
   }
 
   /**
    * Reads the configuration file from disk and
    * returns the parsed config object.
-   * @returns {Object.<string, string>}
    */
-  static get() {
+  static get(): IConfigDictionary {
     let configContents = "";
 
     try {
       // we're deliberately using a sync call here because
       // otherwise the yargs command doesn't prevent the
       // rest of the program from running
-      configContents = fs.readFileSync(getConfigPath(), "utf8");
+      configContents = readFileSync(getConfigPath(), "utf8");
     } catch (e) {
       // the config file is optional, so if it doesn't exist
       // just swallow the error and return the default (empty)
@@ -78,10 +76,8 @@ class Config {
       }
     }
 
-    let configObj = ini.parse(configContents);
+    let configObj = parse(configContents);
     // merge with defaults, with user specified config taking precedence
-    return Object.assign({}, defaults, configObj);
+    return Object.assign({}, defaults, configObj) as IConfigDictionary;
   }
 }
-
-module.exports = Config;

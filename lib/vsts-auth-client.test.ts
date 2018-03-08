@@ -2,23 +2,26 @@ jest.mock("request");
 jest.mock("jsonwebtoken");
 jest.mock("./config");
 
-let {
+import {
   AuthorizationError,
   getUserAuthToken,
-  setRefreshToken,
-  getVstsLabOauthToken,
-  getServiceEndpoints
-} = require("./vsts-auth-client");
+  setRefreshToken
+} from "./vsts-auth-client";
 
-let config = require("./config");
-let { post, get } = require("request");
+import { Config as config } from "./config";
+let { post } = require("request");
 let jwt = require("jsonwebtoken");
 
 describe("In the vsts-auth-client module", () => {
-  let originalEnv;
+  let originalEnv: NodeJS.ProcessEnv;
 
   beforeAll(() => {
     originalEnv = process.env;
+    process.env = {};
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
   });
 
   beforeEach(() => {
@@ -28,10 +31,6 @@ describe("In the vsts-auth-client module", () => {
   afterEach(() => {
     jest.resetAllMocks();
     expect.hasAssertions();
-  });
-
-  afterAll(() => {
-    process.env = originalEnv;
   });
 
   describe("the AuthorizationError class", () => {
@@ -62,19 +61,19 @@ describe("In the vsts-auth-client module", () => {
     const now = nowInMs / 1000;
 
     beforeEach(() => {
-      config.get.mockImplementation(() => ({
+      (config.get as jest.Mock).mockImplementation(() => ({
         tokenEndpoint: "foo",
         refresh_token: "foo"
       }));
 
-      post.mockImplementation((x, o, cb) => {
+      post.mockImplementation((_x: string, o: Object, cb: Function) => {
         expect(o).toHaveProperty("qs.code", fakeCode);
         cb(null, {}, { refresh_token: "bar", access_token: fakeAccessToken });
       });
     });
 
     test("should reject if the config does not have a tokenEndpoint", () => {
-      config.get.mockImplementation(() => ({}));
+      (config.get as jest.Mock).mockImplementation(() => ({}));
 
       return expect(getUserAuthToken()).rejects.toHaveProperty(
         "message",
@@ -83,7 +82,7 @@ describe("In the vsts-auth-client module", () => {
     });
 
     test("should reject if the config does not have a refresh_token", () => {
-      config.get.mockImplementation(() => ({
+      (config.get as jest.Mock).mockImplementation(() => ({
         tokenEndpoint: "foo"
       }));
 
@@ -102,7 +101,7 @@ describe("In the vsts-auth-client module", () => {
     describe("should reject if the token endpoint returns", () => {
       test("an error", () => {
         const errorObj = { error: "foo" };
-        post.mockImplementation((x, o, cb) => {
+        post.mockImplementation((_x: string, _o: Object, cb: Function) => {
           cb(errorObj);
         });
         return expect(getUserAuthToken()).rejects.toEqual(errorObj);
@@ -120,7 +119,7 @@ describe("In the vsts-auth-client module", () => {
 
         testData.forEach(t => {
           test(t.name, () => {
-            post.mockImplementation((x, o, cb) => {
+            post.mockImplementation((_x: string, _o: Object, cb: Function) => {
               cb(...t.cbArgs);
             });
 
@@ -145,50 +144,23 @@ describe("In the vsts-auth-client module", () => {
         });
     });
 
-    test("should not resolve until after the nbf claim in the returned token is >= the current time", () => {
+    test("should not resolve until after the nbf claim in the returned token is >= the current time", async () => {
       const delay = 60000; // 1 minute
       jest.spyOn(Date, "now").mockImplementation(() => nowInMs);
       jwt.decode.mockImplementation(() => ({
         nbf: now + delay / 1000
       }));
 
-      setTimeout.mockImplementation((f, t) => {
+      global.setTimeout = jest.fn((f, t) => {
         expect(t).toEqual(delay);
         f();
       });
 
-      let authResponse = getUserAuthToken();
+      let authResponse = await getUserAuthToken();
 
-      return expect(authResponse)
-        .resolves.toEqual(fakeAccessToken)
-        .then(() => {
-          expect(post).toHaveBeenCalledTimes(1);
-          expect(setTimeout).toHaveBeenCalledTimes(1);
-          expect.assertions(5);
-        });
+      expect(authResponse).toEqual(fakeAccessToken);
+      expect(post).toHaveBeenCalledTimes(1);
+      expect.assertions(4);
     });
-  });
-
-  test("the getServiceEndpoints static method", () => {
-    const collectionUri = "https://fakeCollectionUri.com";
-    const projectId = "some-guid";
-    const authToken = "baz";
-    process.env["SYSTEM_TEAMFOUNDATIONCOLLECTIONURI"] = collectionUri;
-    process.env["SYSTEM_TEAMPROJECTID"] = projectId;
-    process.env["SYSTEM_ACCESSTOKEN"] = authToken;
-
-    get.mockImplementation((endpoint, options, cb) => {
-      expect(
-        endpoint.indexOf(
-          `${collectionUri}DefaultCollection/${projectId}/_apis`
-        ) > -1
-      ).toBeTruthy();
-      expect(options.auth).toHaveProperty("bearer", authToken);
-      cb(null, {}, { value: { token: "foo" } });
-    });
-
-    return expect(getServiceEndpoints())
-      .resolves.toEqual({ token: "foo" })
-      .then(() => expect.assertions(3));
   });
 });
