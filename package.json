@@ -10,7 +10,7 @@
     "node": ">=6"
   },
   "bin": {
-    "better-vsts-npm-auth": "./cli.js"
+    "better-vsts-npm-auth": "./dist/cli.js"
   },
   "scripts": {
     "ci": "yarn run build && yarn run test:ci",
@@ -40,6 +40,7 @@
     "@types/node": "^9.4.6",
     "@types/q": "^1.0.7",
     "@types/request": "^2.47.0",
+    "@types/yargs": "^11.0.0",
     "jest": "^22.0.0",
     "lint-staged": "^6.0.0",
     "prettier": "^1.9.2",

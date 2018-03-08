@@ -7,11 +7,11 @@ const input = require("input");
 let runningCmd = false;
 
 // commands
-const CONFIG_SETTER = argv => {
+const CONFIG_SETTER = (argv: any) => {
   config.set(argv.key, argv.value);
   return Promise.resolve();
 };
-const CONFIG_GETTER = argv => {
+const CONFIG_GETTER = (argv: any) => {
   let configObj = config.get();
 
   if (argv.key) {
@@ -21,9 +21,9 @@ const CONFIG_GETTER = argv => {
   console.log(configObj);
   return Promise.resolve();
 };
-const CONFIG_DELETER = argv => {
+const CONFIG_DELETER = (argv: any) => {
   let configObj = config.get();
-  let writeConfig = o => {
+  let writeConfig = (o: Object) => {
     console.log("new config:\n", o);
     config.write(o);
   };
@@ -36,7 +36,7 @@ const CONFIG_DELETER = argv => {
     // get user confirmation and then delete the whole config
     return input
       .confirm("Are you sure you want to delete your config file?")
-      .then(deleteConfig => {
+      .then((deleteConfig: boolean) => {
         if (deleteConfig) {
           writeConfig({});
         }
@@ -44,8 +44,8 @@ const CONFIG_DELETER = argv => {
   }
 };
 
-const commandBuilder = cmd => {
-  return args => {
+const commandBuilder = (cmd: Function) => {
+  return (args: any) => {
     runningCmd = true;
     cmd(args).then(() => process.exit(0));
   };
@@ -72,7 +72,7 @@ const argv = require("yargs")
   .command({
     command: "config [command]",
     desc: 'modify the config (run "config --help" for more info)',
-    builder: yargs =>
+    builder: (yargs: any) =>
       yargs
         .command({
           command: "set <key> <value>",
@@ -95,7 +95,7 @@ const argv = require("yargs")
   .help().argv;
 
 // safety first - handle and exit non-zero if we run into issues
-let abortProcess = e => {
+let abortProcess = (e: Error) => {
   console.log(e);
   process.exit(1);
 };
