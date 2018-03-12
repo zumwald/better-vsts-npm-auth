@@ -35,6 +35,7 @@ export function isAuthorizationError(e: Error): boolean {
 export interface IRunOptions {
   configOverride: string;
   npmrcPath: string;
+  stack: boolean;
 }
 
 export async function run(options: IRunOptions) {
@@ -91,6 +92,10 @@ export async function run(options: IRunOptions) {
     }
 
     // no matter what, we error out here
-    throw e;
+    if (options.stack === true) {
+      throw e;
+    } else {
+      process.exit(1);
+    }
   }
 }

@@ -78,6 +78,10 @@ const argv = require("yargs")
     describe: "alternate path to this tool's configuration file",
     type: "string"
   })
+  .options("stack", {
+    describe: "print the stack trace on error",
+    type: "boolean"
+  })
   .command({
     command: "config [command]",
     desc: 'modify the config (run "config --help" for more info)',
