@@ -1,55 +1,64 @@
 #!/usr/bin/env node
 
-const config = require("./lib/config.js");
-const task = require("./index.js");
+import { Config, IConfigDictionary } from "./lib/config";
+import { run } from "./index";
 const input = require("input");
 
 let runningCmd = false;
 
-// commands
-const CONFIG_SETTER = (argv: any) => {
-  config.set(argv.key, argv.value);
-  return Promise.resolve();
-};
-const CONFIG_GETTER = (argv: any) => {
-  let configObj = config.get();
+interface IKeyValuePair {
+  key: string;
+  value: string;
+}
 
-  if (argv.key) {
-    configObj = configObj[argv.key];
+function configSetter(argv: IKeyValuePair) {
+  Config.set(argv.key, argv.value);
+}
+
+function configGetter(key: string) {
+  if (key) {
+    let configObj = Config.get();
+    let configEntry = configObj[key];
+
+    if (configEntry) {
+      console.log(configEntry);
+    }
   }
+}
 
-  console.log(configObj);
-  return Promise.resolve();
-};
-const CONFIG_DELETER = (argv: any) => {
-  let configObj = config.get();
-  let writeConfig = (o: Object) => {
-    console.log("new config:\n", o);
-    config.write(o);
-  };
+function _deleteConfig() {
+  _writeConfig({});
+}
 
-  if (configObj[argv.key]) {
-    delete configObj[argv.key];
-    writeConfig(configObj);
-    return Promise.resolve();
+function _writeConfig(o: IConfigDictionary) {
+  console.log("new config:\n", o);
+  Config.write(o);
+}
+
+async function configDeleter(key: string): Promise<void> {
+  if (key) {
+    let configObject = Config.get();
+    delete configObject[key];
+    _writeConfig(configObject);
   } else {
-    // get user confirmation and then delete the whole config
-    return input
-      .confirm("Are you sure you want to delete your config file?")
-      .then((deleteConfig: boolean) => {
-        if (deleteConfig) {
-          writeConfig({});
-        }
-      });
+    // delete the whole config, once user confirms
+    let deleteConfig = await input.confrim(
+      "Are you sure you want to delete your config file?"
+    );
+    if (deleteConfig === true) {
+      _deleteConfig();
+    }
   }
-};
+  return Promise.resolve();
+}
 
-const commandBuilder = (cmd: Function) => {
-  return (args: any) => {
+function commandBuilder(cmd: Function): Function {
+  return async (args: any) => {
     runningCmd = true;
-    cmd(args).then(() => process.exit(0));
+    await cmd(args);
+    process.exit(0);
   };
-};
+}
 
 const argv = require("yargs")
   .usage("Usage: $0 [command] [options]")
@@ -77,20 +86,20 @@ const argv = require("yargs")
         .command({
           command: "set <key> <value>",
           desc: "Set a config variable",
-          handler: commandBuilder(CONFIG_SETTER)
+          handler: commandBuilder(configSetter)
         })
         .command({
           command: "get [key]",
           desc: "Get a config variable",
-          handler: commandBuilder(CONFIG_GETTER)
+          handler: commandBuilder(configGetter)
         })
         .command({
           command: "delete [key]",
           desc:
             "Delete a config variable. If the variable is not supplied, deletes the entire config.",
-          handler: commandBuilder(CONFIG_DELETER)
+          handler: commandBuilder(configDeleter)
         }),
-    handler: commandBuilder(CONFIG_GETTER)
+    handler: commandBuilder(configGetter)
   })
   .help().argv;
 
@@ -103,5 +112,5 @@ process.on("uncaughtException", abortProcess);
 process.on("unhandledRejection", abortProcess);
 
 if (!runningCmd) {
-  task.run(argv);
+  run(argv);
 }
