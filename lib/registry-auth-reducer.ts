@@ -93,7 +93,10 @@ export async function authenticateRegistries(
 
     // use the token exposed in the VSTS environment for use by build tasks
     // details: https://docs.microsoft.com/en-us/vsts/build-release/actions/scripts/powershell#oauth
-    registriesByCollection.sameCollection.forEach(r => (r.token = labToken));
+    registriesByCollection.sameCollection.forEach(r => {
+      console.log(`using SYSTEM_ACCESSTOKEN for ${r.url}`);
+      r.token = labToken;
+    });
 
     // if there are registries in other VSTS collections, we currently don't
     // support authenticating those. Print a warning message for each of them.
