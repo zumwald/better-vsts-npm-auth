@@ -16,6 +16,7 @@
   "scripts": {
     "ci": "yarn run build && yarn run test:ci",
     "build": "rimraf ./dist && tsc",
+    "watch": "tsc -w",
     "test": "jest",
     "test:ci": "yarn run test --all && yarn run prettier:ci",
     "test:watch": "yarn run test --watch",

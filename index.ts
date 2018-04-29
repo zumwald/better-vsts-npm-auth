@@ -77,25 +77,26 @@ export async function run(options: IRunOptions = {}) {
     if (!process.env.BUILD_BUILDID && !process.env.RELEASE_RELEASEID) {
       let consentUrl = `https://app.vssps.visualstudio.com/oauth2/authorize?client_id=${
         configObj.clientId
-        }&response_type=Assertion&state=${uuid()}&scope=vso.packaging_write&redirect_uri=${
+      }&response_type=Assertion&state=${uuid()}&scope=vso.packaging_write&redirect_uri=${
         configObj.redirectUri
-        }`;
+      }`;
 
       console.log(
         "\n*****\n" +
-        "We need user consent before this script can run.\n\n" +
-        "Follow instructions in the browser window that just opened, or if a browser does not open,\n" +
-        "manually browse to this url and follow the instructions there:\n\n" +
-        `${consentUrl}\n\n` +
-        "Then run better-vsts-npm-auth again after consent has been granted.\n*****\n"
+          "We need user consent before this script can run.\n\n" +
+          "Follow instructions in the browser window that just opened, or if a browser does not open,\n" +
+          "manually browse to this url and follow the instructions there:\n\n" +
+          `${consentUrl}\n\n` +
+          "Then run better-vsts-npm-auth again after consent has been granted.\n*****\n"
       );
     }
 
     // no matter what, we error out here
     if (options.stack === true) {
+      console.error(e.stack);
       throw e;
     } else {
-      process.exit(1);
+      throw new Error();
     }
   }
 }

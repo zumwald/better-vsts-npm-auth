@@ -2,6 +2,8 @@
 
 import { Config, IConfigDictionary } from "./lib/config";
 import { run } from "./index";
+import { fork } from "child_process";
+import { resolve, join } from "path";
 const input = require("input");
 
 let runningCmd = false;
@@ -82,6 +84,37 @@ const argv = require("yargs")
     describe: "print the stack trace on error",
     type: "boolean"
   })
+  .options("interval", {
+    describe:
+      "period (in minutes) used when running the 'background-refresh' command",
+    type: "number",
+    default: 55
+  })
+  .command({
+    command: "background-refresh",
+    desc:
+      "run better-vsts-npm-auth periodically in the background in order to maintain fresh credentials for this project",
+    handler: (args: any) => {
+      console.log(
+        "going to refresh credentials every",
+        args.interval,
+        "minutes"
+      );
+
+      const intervalInMs: string = `${60 * 1000 * args.interval}`;
+      const modulePath = resolve(join(__dirname, "background-refresh.js"));
+      let proc = fork(modulePath, [intervalInMs], {
+        cwd: process.cwd(),
+        silent: true
+      });
+
+      console.log(
+        "Created background process",
+        proc.pid,
+        "to keep the credentials for this project up to date."
+      );
+    }
+  })
   .command({
     command: "config [command]",
     desc: 'modify the config (run "config --help" for more info)',
@@ -115,6 +148,15 @@ let abortProcess = (e: Error) => {
 process.on("uncaughtException", abortProcess);
 process.on("unhandledRejection", abortProcess);
 
-if (!runningCmd) {
-  run(argv);
+async function Main() {
+  if (!runningCmd) {
+    try {
+      await run(argv);
+      process.exit(0);
+    } catch (e) {
+      process.exit(1);
+    }
+  }
 }
+
+Main();
