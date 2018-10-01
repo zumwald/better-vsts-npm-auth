@@ -15,9 +15,9 @@ describe("The Config module", () => {
 
   const CONFIG_CONTENTS = "foo=bar\r\nbaz=value";
   const DEFAULT_CONFIG_CONTENTS =
-    "clientId=DE516D90-B63E-4994-BA64-881EA988A9D2\r\n" +
-    "redirectUri=https://stateless-vsts-oauth.azurewebsites.net/oauth-callback\r\n" +
-    "tokenEndpoint=https://stateless-vsts-oauth.azurewebsites.net/token-refresh\r\n" +
+    "clientId=CD5DFF07-BD6E-4734-8593-083F01146318\r\n" +
+    "redirectUri=https://better-vsts-npm-auth.azurewebsites.net/oauth-callback\r\n" +
+    "tokenEndpoint=https://better-vsts-npm-auth.azurewebsites.net/token-refresh\r\n" +
     "tokenExpiryGraceInMs=1800000";
 
   beforeEach(() => {
