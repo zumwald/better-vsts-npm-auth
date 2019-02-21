@@ -1,4 +1,4 @@
-jest.mock("request");
+jest.mock("node-fetch");
 jest.mock("jsonwebtoken");
 jest.mock("./config");
 
@@ -7,9 +7,10 @@ import {
   getUserAuthToken,
   setRefreshToken
 } from "./vsts-auth-client";
+import * as querystring from 'querystring';
 
 import { Config as config } from "./config";
-let { post } = require("request");
+let fetch = require("node-fetch");
 let jwt = require("jsonwebtoken");
 
 describe("In the vsts-auth-client module", () => {
@@ -66,9 +67,16 @@ describe("In the vsts-auth-client module", () => {
         refresh_token: "foo"
       }));
 
-      post.mockImplementation((_x: string, o: Object, cb: Function) => {
-        expect(o).toHaveProperty("qs.code", fakeCode);
-        cb(null, {}, { refresh_token: "bar", access_token: fakeAccessToken });
+      fetch.mockImplementation((url: string) => {
+        const queryString = querystring.stringify({ code: fakeCode });
+
+        expect(url.slice(url.length - queryString.length)).toEqual(queryString);
+
+        return Promise.resolve({
+          json: () => {
+            return Promise.resolve({ refresh_token: "bar", access_token: fakeAccessToken })
+          }
+        });
       });
     });
 
@@ -101,9 +109,11 @@ describe("In the vsts-auth-client module", () => {
     describe("should reject if the token endpoint returns", () => {
       test("an error", () => {
         const errorObj = { error: "foo" };
-        post.mockImplementation((_x: string, _o: Object, cb: Function) => {
-          cb(errorObj);
+
+        fetch.mockImplementation(() => {
+          return Promise.reject(errorObj);
         });
+
         return expect(getUserAuthToken()).rejects.toEqual(errorObj);
       });
 
@@ -119,8 +129,12 @@ describe("In the vsts-auth-client module", () => {
 
         testData.forEach(t => {
           test(t.name, () => {
-            post.mockImplementation((_x: string, _o: Object, cb: Function) => {
-              cb(...t.cbArgs);
+            fetch.mockImplementation(() => {
+              return Promise.resolve({
+                json: () => {
+                  return Promise.resolve(t.cbArgs[2])
+                }
+              });
             });
 
             return expect(getUserAuthToken()).rejects.toContain(
@@ -139,7 +153,7 @@ describe("In the vsts-auth-client module", () => {
       return expect(getUserAuthToken())
         .resolves.toEqual(fakeAccessToken)
         .then(() => {
-          expect(post).toHaveBeenCalledTimes(1);
+          expect(fetch).toHaveBeenCalledTimes(1);
           expect.assertions(3);
         });
     });
@@ -159,7 +173,7 @@ describe("In the vsts-auth-client module", () => {
       let authResponse = await getUserAuthToken();
 
       expect(authResponse).toEqual(fakeAccessToken);
-      expect(post).toHaveBeenCalledTimes(1);
+      expect(fetch).toHaveBeenCalledTimes(1);
       expect.assertions(4);
     });
   });

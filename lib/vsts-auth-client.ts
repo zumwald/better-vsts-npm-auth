@@ -1,6 +1,8 @@
-import { post } from "request";
+
 import { decode } from "jsonwebtoken";
 import { Config } from "./config";
+import fetch from "node-fetch";
+import * as querystring from 'querystring';
 
 const k_REFRESH_TOKEN = "refresh_token";
 
@@ -37,28 +39,19 @@ export async function getUserAuthToken(): Promise<string> {
     return Promise.reject(new AuthorizationError("missing " + k_REFRESH_TOKEN));
   }
 
-  let accessToken = await new Promise<string>((resolve, reject) => {
-    post(
-      configObj.tokenEndpoint,
-      {
-        json: true,
-        qs: {
-          code: configObj[k_REFRESH_TOKEN]
-        }
-      },
-      (err, _res, body) => {
-        if (err) {
-          reject(err);
-        } else if (!body || !body[k_REFRESH_TOKEN] || !body.access_token) {
-          reject("malformed response body:\n" + body);
-        } else {
-          // stash the refresh_token
-          Config.set(k_REFRESH_TOKEN, body[k_REFRESH_TOKEN]);
-          resolve(body.access_token);
-        }
-      }
-    );
+  const response = await fetch(`${configObj.tokenEndpoint}?${querystring.stringify({ code: configObj[k_REFRESH_TOKEN] })}`, {
+    method: 'POST'
   });
+
+  const body = await response.json();
+
+  if (!body || !body[k_REFRESH_TOKEN] || !body.access_token) {
+    throw "malformed response body:\n" + body;
+  }
+
+  // stash the refresh_token
+  Config.set(k_REFRESH_TOKEN, body[k_REFRESH_TOKEN]);
+  const accessToken = body.access_token;
 
   // VSTS auth service doesn't accomodate clock skew well
   // in these "JIT" scenarios. Check if the token nbf is
