@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 
-import { Config, IConfigDictionary } from "./lib/config";
+import { Config } from "./lib/config";
 import { run } from "./index";
+import { homedir } from "os";
+import { join } from "path";
+const DEFAULT_CONFIG_PATH = join(homedir(), ".vstsnpmauthrc");
 const input = require("input");
 
 let runningCmd = false;
@@ -11,13 +14,13 @@ interface IKeyValuePair {
   value: string;
 }
 
-function configSetter(argv: IKeyValuePair) {
-  Config.set(argv.key, argv.value);
+async function configSetter(config: Config, argv: IKeyValuePair) {
+  config.set(argv.key, argv.value);
 }
 
-function configGetter(key: string) {
+async function configGetter(config: Config, key: string) {
   if (key) {
-    let configObj = Config.get();
+    let configObj = config.get();
     let configEntry = configObj[key];
 
     if (configEntry) {
@@ -26,36 +29,27 @@ function configGetter(key: string) {
   }
 }
 
-function _deleteConfig() {
-  _writeConfig({});
-}
-
-function _writeConfig(o: IConfigDictionary) {
-  console.log("new config:\n", o);
-  Config.write(o);
-}
-
-async function configDeleter(key: string): Promise<void> {
+async function configDeleter(config: Config, key: string): Promise<void> {
   if (key) {
-    let configObject = Config.get();
+    let configObject = config.get();
     delete configObject[key];
-    _writeConfig(configObject);
+    config.write(configObject);
   } else {
     // delete the whole config, once user confirms
     let deleteConfig = await input.confrim(
       "Are you sure you want to delete your config file?"
     );
     if (deleteConfig === true) {
-      _deleteConfig();
+      config.delete();
     }
   }
-  return Promise.resolve();
 }
 
-function commandBuilder(cmd: Function): Function {
+function commandBuilder(cmd: (config: Config, args: any) => Promise<void>): (args: any) => void {
   return async (args: any) => {
     runningCmd = true;
-    await cmd(args);
+    let config = new Config(args.configOverride || DEFAULT_CONFIG_PATH);
+    await cmd(config, args);
     process.exit(0);
   };
 }
@@ -116,5 +110,6 @@ process.on("uncaughtException", abortProcess);
 process.on("unhandledRejection", abortProcess);
 
 if (!runningCmd) {
-  run(argv);
+  let config = new Config(argv.configOverride || DEFAULT_CONFIG_PATH);
+  run(config, argv);
 }

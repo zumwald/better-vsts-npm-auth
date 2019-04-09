@@ -24,28 +24,16 @@ describe("The Config module", () => {
     fs.readFileSync.mockImplementation(() => CONFIG_CONTENTS);
   });
 
-  describe("reads the config file from", () => {
-    test("the given location when overridden", () => {
-      let configOverridePath = "/foo/bar";
+  test("reads the config file from the given location", () => {
+    let configOverridePath = "/foo/bar";
 
-      fs.writeFileSync.mockImplementation((p: string) => {
-        expect(p).toEqual(configOverridePath);
-      });
-
-      Config.setConfigPath(configOverridePath);
-      Config.write({});
-      expect.assertions(1);
+    fs.writeFileSync.mockImplementation((p: string) => {
+      expect(p).toEqual(configOverridePath);
     });
 
-    test("the default location when not overridden", () => {
-      fs.writeFileSync.mockImplementation((p: string) => {
-        expect(p).toBeUndefined();
-      });
-
-      Config.setConfigPath("");
-      Config.write({});
-      expect.assertions(1);
-    });
+    let config = new Config(configOverridePath);
+    config.write({});
+    expect.assertions(1);
   });
 
   describe("reads the config", () => {
@@ -55,7 +43,7 @@ describe("The Config module", () => {
           throw { code: "ENOENT" };
         });
 
-        let config = Config.get();
+        let config = (new Config("")).get();
 
         expect(config).toEqual(ini.parse(DEFAULT_CONFIG_CONTENTS));
       });
@@ -65,7 +53,7 @@ describe("The Config module", () => {
           return "clientId=foobar\r\n";
         });
 
-        let config = Config.get();
+        let config = (new Config("")).get();
         expect(config.clientId).toEqual("foobar");
         expect(config.tokenExpiryGraceInMs).toEqual("1800000");
       });
@@ -76,8 +64,10 @@ describe("The Config module", () => {
         throw new Error("foobar");
       });
 
+      let config = new Config("");
+
       expect(() => {
-        Config.get();
+        (config).get();
       }).toThrowError("foobar");
     });
 
@@ -88,8 +78,10 @@ describe("The Config module", () => {
         throw e;
       });
 
+      let config = new Config("");
+
       expect(() => {
-        Config.get();
+        config.get();
       }).not.toThrow();
     });
   });
@@ -100,7 +92,9 @@ describe("The Config module", () => {
         expect(content).toContain("foo=bar");
       });
 
-      Config.write({ foo: "bar" });
+      let config = new Config("");
+
+      config.write({ foo: "bar" });
       expect(fs.writeFileSync).toHaveBeenCalledTimes(1);
       expect.assertions(2);
     });
@@ -110,8 +104,10 @@ describe("The Config module", () => {
         throw new Error("foobar");
       });
 
+      let config = new Config("");
+
       expect(() => {
-        Config.write({ foo: "bar" });
+        config.write({ foo: "bar" });
       }).toThrowError("foobar");
     });
   });
@@ -132,17 +128,21 @@ describe("The Config module", () => {
     });
 
     test("and writes it to disk upon updating the value", () => {
-      Config.set("some", "value");
+      let config = new Config("");
+
+      config.set("some", "value");
       expect(fs.writeFileSync).toHaveBeenCalledTimes(1);
       expect(configContents.indexOf("some=value") > -1).toBeTruthy();
     });
 
     test("and ensures prior updates to the config are respected", () => {
-      Config.set("key1", "val1");
+      let config = new Config("");
+
+      config.set("key1", "val1");
       expect(configContents.indexOf("key1=val1") > -1).toBeTruthy();
       expect(configContents.indexOf("key2=val2") > -1).toBeFalsy();
 
-      Config.set("key2", "val2");
+      config.set("key2", "val2");
       expect(configContents.indexOf("key1=val1") > -1).toBeTruthy();
       expect(configContents.indexOf("key2=val2") > -1).toBeTruthy();
 

@@ -1,5 +1,5 @@
 import { Npmrc } from "./lib/npm";
-import { Config, IConfigDictionary } from "./lib/config";
+import { Config } from "./lib/config";
 import { authenticateRegistries } from "./lib/registry-auth-reducer";
 import { AuthorizationError } from "./lib/vsts-auth-client";
 const uuid = require("uuid/v4");
@@ -38,15 +38,10 @@ export interface IRunOptions {
   stack?: boolean;
 }
 
-export async function run(options: IRunOptions = {}) {
-  let configObj: IConfigDictionary;
+export async function run(config: Config, options: IRunOptions = {}) {
+  const configObj = config.get();
 
   try {
-    if (options.configOverride) {
-      Config.setConfigPath(options.configOverride);
-    }
-
-    configObj = Config.get();
     // if npmrcPath isn't specified, default is the working directory
     options.npmrcPath = options.npmrcPath || process.cwd();
 
@@ -56,6 +51,7 @@ export async function run(options: IRunOptions = {}) {
     ]);
 
     let authenticatedRegistries = await authenticateRegistries(
+      config,
       ...projectNpmrc.getRegistries(),
       ...userNpmrc.getRegistries()
     );

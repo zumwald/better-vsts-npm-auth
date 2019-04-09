@@ -9,7 +9,6 @@ import {
 } from "./vsts-auth-client";
 import * as querystring from 'querystring';
 
-import { Config as config } from "./config";
 let fetch = require("node-fetch");
 let jwt = require("jsonwebtoken");
 
@@ -48,25 +47,24 @@ describe("In the vsts-auth-client module", () => {
   });
   describe("the setRefreshToken static method", () => {
     test("should set the config entry for refresh_token with the given token", () => {
+      const mockConfig = getMockConfig();
       const fakeToken = "foo";
-      setRefreshToken(fakeToken);
+      setRefreshToken(mockConfig, fakeToken);
 
-      expect(config.set).toHaveBeenCalledTimes(1);
-      expect(config.set).toHaveBeenCalledWith("refresh_token", fakeToken);
+      expect(mockConfig.set).toHaveBeenCalledTimes(1);
+      expect(mockConfig.set).toHaveBeenCalledWith("refresh_token", fakeToken);
     });
   });
+
   describe("the getUserAuthToken static  method", () => {
     const fakeCode = "foo";
     const fakeAccessToken = "baz";
     const nowInMs = 10000;
     const now = nowInMs / 1000;
 
-    beforeEach(() => {
-      (config.get as jest.Mock).mockImplementation(() => ({
-        tokenEndpoint: "foo",
-        refresh_token: "foo"
-      }));
 
+
+    beforeEach(() => {
       fetch.mockImplementation((url: string) => {
         const queryString = querystring.stringify({ code: fakeCode });
 
@@ -81,20 +79,20 @@ describe("In the vsts-auth-client module", () => {
     });
 
     test("should reject if the config does not have a tokenEndpoint", () => {
-      (config.get as jest.Mock).mockImplementation(() => ({}));
+      let mockConfig = getMockConfig({});
 
-      return expect(getUserAuthToken()).rejects.toHaveProperty(
+      return expect(getUserAuthToken(mockConfig)).rejects.toHaveProperty(
         "message",
         "invalid config, missing tokenEndpoint"
       );
     });
 
     test("should reject if the config does not have a refresh_token", () => {
-      (config.get as jest.Mock).mockImplementation(() => ({
+      let mockConfig = getMockConfig({
         tokenEndpoint: "foo"
-      }));
+      });
 
-      let result = getUserAuthToken();
+      let result = getUserAuthToken(mockConfig);
 
       return expect(result)
         .rejects.toBeInstanceOf(AuthorizationError)
@@ -108,13 +106,15 @@ describe("In the vsts-auth-client module", () => {
 
     describe("should reject if the token endpoint returns", () => {
       test("an error", () => {
+        let mockConfig = getMockConfig();
+
         const errorObj = { error: "foo" };
 
         fetch.mockImplementation(() => {
           return Promise.reject(errorObj);
         });
 
-        return expect(getUserAuthToken()).rejects.toEqual(errorObj);
+        return expect(getUserAuthToken(mockConfig)).rejects.toEqual(errorObj);
       });
 
       describe("a response without", () => {
@@ -129,6 +129,7 @@ describe("In the vsts-auth-client module", () => {
 
         testData.forEach(t => {
           test(t.name, () => {
+            let mockConfig = getMockConfig();
             fetch.mockImplementation(() => {
               return Promise.resolve({
                 json: () => {
@@ -137,7 +138,7 @@ describe("In the vsts-auth-client module", () => {
               });
             });
 
-            return expect(getUserAuthToken()).rejects.toContain(
+            return expect(getUserAuthToken(mockConfig)).rejects.toContain(
               "malformed response body:\n"
             );
           });
@@ -146,11 +147,13 @@ describe("In the vsts-auth-client module", () => {
     });
 
     test("should make requests with refresh_token supplied as the code and return the access_token", () => {
+      let mockConfig = getMockConfig();
+
       jwt.decode.mockImplementation(() => ({ nbf: now }));
       jest.spyOn(Date, "now").mockImplementation(() => nowInMs);
       jest.advanceTimersByTime(1000);
 
-      return expect(getUserAuthToken())
+      return expect(getUserAuthToken(mockConfig))
         .resolves.toEqual(fakeAccessToken)
         .then(() => {
           expect(fetch).toHaveBeenCalledTimes(1);
@@ -159,6 +162,7 @@ describe("In the vsts-auth-client module", () => {
     });
 
     test("should not resolve until after the nbf claim in the returned token is >= the current time", async () => {
+      let mockConfig = getMockConfig();
       const delay = 60000; // 1 minute
       jest.spyOn(Date, "now").mockImplementation(() => nowInMs);
       jwt.decode.mockImplementation(() => ({
@@ -170,7 +174,7 @@ describe("In the vsts-auth-client module", () => {
         f();
       });
 
-      let authResponse = await getUserAuthToken();
+      let authResponse = await getUserAuthToken(mockConfig);
 
       expect(authResponse).toEqual(fakeAccessToken);
       expect(fetch).toHaveBeenCalledTimes(1);
@@ -178,3 +182,14 @@ describe("In the vsts-auth-client module", () => {
     });
   });
 });
+
+
+function getMockConfig(mockConfigObj: any = {
+  tokenEndpoint: "foo",
+  refresh_token: "foo"
+}): any {
+  return {
+    set: jest.fn(),
+    get: jest.fn().mockReturnValue(mockConfigObj)
+  }
+}

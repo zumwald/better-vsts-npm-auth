@@ -26,12 +26,12 @@ export function isVstsFeedUrl(url: string): boolean {
   return url.indexOf("pkgs.visualstudio.com/_packaging") > -1;
 }
 
-export function setRefreshToken(token: string) {
-  Config.set(k_REFRESH_TOKEN, token);
+export function setRefreshToken(config: Config, token: string) {
+  config.set(k_REFRESH_TOKEN, token);
 }
 
-export async function getUserAuthToken(): Promise<string> {
-  let configObj = Config.get();
+export async function getUserAuthToken(config: Config): Promise<string> {
+  let configObj = config.get();
   // validate config
   if (!configObj || !configObj.tokenEndpoint) {
     return Promise.reject(new Error("invalid config, missing tokenEndpoint"));
@@ -50,7 +50,7 @@ export async function getUserAuthToken(): Promise<string> {
   }
 
   // stash the refresh_token
-  Config.set(k_REFRESH_TOKEN, body[k_REFRESH_TOKEN]);
+  config.set(k_REFRESH_TOKEN, body[k_REFRESH_TOKEN]);
   const accessToken = body.access_token;
 
   // VSTS auth service doesn't accomodate clock skew well

@@ -4,6 +4,7 @@ import {
   getUserAuthToken
 } from "./vsts-auth-client";
 import { Registry } from "./npm";
+import { Config } from "./config";
 const k_VstfCollectionUri = "SYSTEM_TEAMFOUNDATIONCOLLECTIONURI";
 
 export interface IRegistryCollectionShards {
@@ -70,6 +71,7 @@ export function shardRegistriesByCollection(
 }
 
 export async function authenticateRegistries(
+  config: Config,
   ...registries: Array<Registry>
 ): Promise<Array<Registry>> {
   let registriesToAuthenticate = filterUniqueVstsRegistries(registries);
@@ -79,7 +81,7 @@ export async function authenticateRegistries(
   let labToken = getVstsLabOauthToken();
 
   if (!labToken) {
-    let userToken = await getUserAuthToken();
+    let userToken = await getUserAuthToken(config);
     registriesToAuthenticate.forEach(r => (r.token = userToken));
     return Promise.resolve(registriesToAuthenticate);
   } else {
@@ -103,10 +105,10 @@ export async function authenticateRegistries(
     if (registriesByCollection.differentCollection.length > 0) {
       console.warn(
         `Found ${
-          registriesByCollection.differentCollection.length
+        registriesByCollection.differentCollection.length
         } registries ` +
-          "which could not be authenticated:\n" +
-          registriesByCollection.differentCollection.map(x => `\t${x.url}\n`)
+        "which could not be authenticated:\n" +
+        registriesByCollection.differentCollection.map(x => `\t${x.url}\n`)
       );
     }
 

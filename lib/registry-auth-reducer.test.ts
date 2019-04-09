@@ -138,7 +138,7 @@ describe("The class Registry Auth Reducer", () => {
 
       let result: Promise<
         Array<Registry>
-      > = RegistryAuthReducer.authenticateRegistries(...registries);
+      > = RegistryAuthReducer.authenticateRegistries(null, ...registries);
 
       return expect(result)
         .resolves.toBeDefined()
@@ -182,6 +182,7 @@ describe("The class Registry Auth Reducer", () => {
 
       test("applies the lab token to all registries hosted in the same VSTS project collection", async () => {
         let result = await RegistryAuthReducer.authenticateRegistries(
+          null,
           ...sameRegistries,
           ...differentRegistries
         );
@@ -193,6 +194,7 @@ describe("The class Registry Auth Reducer", () => {
 
       test("does not authenticate the any registries which are not in the same project colleciton", async () => {
         let result = await RegistryAuthReducer.authenticateRegistries(
+          null,
           ...differentRegistries
         );
 

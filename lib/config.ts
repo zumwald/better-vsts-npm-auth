@@ -1,13 +1,6 @@
 import { writeFileSync, readFileSync } from "fs";
-import { homedir } from "os";
-import { join } from "path";
 import { encode, parse } from "ini";
 
-const DEFAULT_CONFIG_PATH = join(homedir(), ".vstsnpmauthrc");
-let configPathOverride: string = undefined;
-
-const getConfigPath = (): string =>
-  configPathOverride ? configPathOverride : DEFAULT_CONFIG_PATH;
 
 const defaults = {
   clientId: "DE516D90-B63E-4994-BA64-881EA988A9D2",
@@ -25,48 +18,45 @@ export interface IConfigDictionary {
  * and presents an interface for interactions with it.
  */
 export class Config {
-  /**
-   * Uses the given path as the location for the module's
-   * configuration file instead of the default.
-   */
-  static setConfigPath(path: string) {
-    configPathOverride = path;
-  }
+  constructor(private configPath: string) { };
 
   /**
    * Adds or updates the given setting and writes it
    * to the configuration file.
    */
-  static set(key: string, val: string) {
-    let configObj = Config.get();
+  set(key: string, val: string) {
+    let configObj = this.get();
 
     configObj[key] = val;
 
-    Config.write(configObj);
+    this.write(configObj);
   }
 
   /**
    * Forces a write of the given object to the
    * configuration file.
    */
-  static write(obj: IConfigDictionary) {
+  write(obj: IConfigDictionary) {
     let configContents = encode(obj);
-    let configPath = getConfigPath();
-    writeFileSync(configPath, configContents);
+    writeFileSync(this.configPath, configContents);
+  }
+
+  delete() {
+    this.write({});
   }
 
   /**
    * Reads the configuration file from disk and
    * returns the parsed config object.
    */
-  static get(): IConfigDictionary {
+  get(): IConfigDictionary {
     let configContents = "";
 
     try {
       // we're deliberately using a sync call here because
       // otherwise the yargs command doesn't prevent the
       // rest of the program from running
-      configContents = readFileSync(getConfigPath(), "utf8");
+      configContents = readFileSync(this.configPath, "utf8");
     } catch (e) {
       // the config file is optional, so if it doesn't exist
       // just swallow the error and return the default (empty)
