@@ -4,10 +4,9 @@ import { Config } from "./lib/config";
 import { run } from "./index";
 import { homedir } from "os";
 import { join } from "path";
+import * as yargs from "yargs";
 const DEFAULT_CONFIG_PATH = join(homedir(), ".vstsnpmauthrc");
 const input = require("input");
-
-let runningCmd = false;
 
 interface IKeyValuePair {
   key: string;
@@ -47,14 +46,13 @@ async function configDeleter(config: Config, key: string): Promise<void> {
 
 function commandBuilder(cmd: (config: Config, args: any) => Promise<void>): (args: any) => void {
   return async (args: any) => {
-    runningCmd = true;
     let config = new Config(args.configOverride || DEFAULT_CONFIG_PATH);
     await cmd(config, args);
     process.exit(0);
   };
 }
 
-const argv = require("yargs")
+yargs
   .usage("Usage: $0 [command] [options]")
   .example("$0", "process the local .npmrc file")
   .example(
@@ -78,28 +76,33 @@ const argv = require("yargs")
   })
   .command({
     command: "config [command]",
-    desc: 'modify the config (run "config --help" for more info)',
+    describe: 'modify the config (run "config --help" for more info)',
     builder: (yargs: any) =>
       yargs
         .command({
           command: "set <key> <value>",
-          desc: "Set a config variable",
+          describe: "Set a config variable",
           handler: commandBuilder(configSetter)
         })
         .command({
           command: "get [key]",
-          desc: "Get a config variable",
+          describe: "Get a config variable",
           handler: commandBuilder(configGetter)
         })
         .command({
           command: "delete [key]",
-          desc:
+          describe:
             "Delete a config variable. If the variable is not supplied, deletes the entire config.",
           handler: commandBuilder(configDeleter)
         }),
     handler: commandBuilder(configGetter)
   })
-  .help().argv;
+  .command({
+    command: "$0",
+    describe: 'authenticate the user to NPM based on the settings provided',
+    handler: commandBuilder(run)
+  })
+  .help().parse();
 
 // safety first - handle and exit non-zero if we run into issues
 let abortProcess = (e: Error) => {
@@ -108,8 +111,3 @@ let abortProcess = (e: Error) => {
 };
 process.on("uncaughtException", abortProcess);
 process.on("unhandledRejection", abortProcess);
-
-if (!runningCmd) {
-  let config = new Config(argv.configOverride || DEFAULT_CONFIG_PATH);
-  run(config, argv);
-}
