@@ -12,7 +12,6 @@ describe("The class Registry Auth Reducer", () => {
   beforeAll(() => {
     originalEnv = process.env;
     process.env = {};
-    process.env[k_collectionUrl] = "https://foo.visualstudio.com";
   });
 
   afterAll(() => {
@@ -20,7 +19,8 @@ describe("The class Registry Auth Reducer", () => {
   });
 
   afterEach(() => {
-    jest.resetAllMocks();
+    process.env[k_collectionUrl] = "https://foo.visualstudio.com";
+    jest.restoreAllMocks();
     expect.hasAssertions();
   });
 
@@ -58,6 +58,7 @@ describe("The class Registry Auth Reducer", () => {
       );
       expect.assertions(4);
     });
+
     test("given an array containing non-visualstudio.com hosted registries, removes them", () => {
       let registry_vstsFeed =
         "https://bar.pkgs.visualstudio.com/_packaging/mirror/npm/registry";
@@ -75,6 +76,20 @@ describe("The class Registry Auth Reducer", () => {
         new Registry(registry_vstsFeed)
       );
     });
+
+    test("given an array containing undefined values, removes them", () => {
+      let registry_vstsFeed =
+        "https://bar.pkgs.visualstudio.com/_packaging/mirror/npm/registry";
+      let testRegistries = [new Registry(registry_vstsFeed), undefined, undefined];
+
+      jest.spyOn(global.console, 'error');
+      let filteredRegistries = RegistryAuthReducer.filterUniqueVstsRegistries(testRegistries);
+      expect(console.error).toHaveBeenCalledTimes(2);
+      expect(filteredRegistries).toHaveLength(1);
+      expect(filteredRegistries).toContainEqual(
+        new Registry(registry_vstsFeed)
+      );
+    });
   });
 
   describe("has a static method shardRegistriesByCollection which", () => {
@@ -84,38 +99,50 @@ describe("The class Registry Auth Reducer", () => {
       expect(result).toHaveProperty("differentCollection", []);
     });
 
-    test("given input with a mixture of internal and external registries, sorts them into the proper result", () => {
-      let sameCollectionEntries = [
-        new Registry(
-          "https://foo.pkgs.visualstudio.com/_packaging/fake/npm/registry/"
-        ),
-        new Registry(
-          "https://foo.pkgs.visualstudio.com/_packaging/other-fake/npm/registry/"
-        ),
-        new Registry(
-          "https://foo.pkgs.visualstudio.com/_packaging/some-other/npm/registry/"
-        )
-      ];
-      let otherCollectionEntries = [
-        new Registry(
-          "https://bar.pkgs.visualstudio.com/_packaging/fake/npm/registry/"
-        ),
-        new Registry(
-          "https://baz.pkgs.visualstudio.com/_packaging/other/npm/registry/"
-        ),
-        new Registry(
-          "https://bar.pkgs.visualstudio.com/_packaging/other-fake/npm/registry/"
-        )
-      ];
+    let sameCollectionEntries = [
+      new Registry(
+        "https://foo.pkgs.visualstudio.com/_packaging/fake/npm/registry/"
+      ),
+      new Registry(
+        "https://foo.pkgs.visualstudio.com/_packaging/other-fake/npm/registry/"
+      ),
+      new Registry(
+        "https://foo.pkgs.visualstudio.com/_packaging/some-other/npm/registry/"
+      )
+    ];
+    let otherCollectionEntries = [
+      new Registry(
+        "https://bar.pkgs.visualstudio.com/_packaging/fake/npm/registry/"
+      ),
+      new Registry(
+        "https://baz.pkgs.visualstudio.com/_packaging/other/npm/registry/"
+      ),
+      new Registry(
+        "https://bar.pkgs.visualstudio.com/_packaging/other-fake/npm/registry/"
+      )
+    ];
 
+    describe("given input with a mixture of internal and external registries", () => {
       let input = [...sameCollectionEntries, ...otherCollectionEntries];
-      let result = RegistryAuthReducer.shardRegistriesByCollection(input);
 
-      expect(result).toHaveProperty("sameCollection", sameCollectionEntries);
-      expect(result).toHaveProperty(
-        "differentCollection",
-        otherCollectionEntries
-      );
+      test("when process.env['SYSTEM_TEAMFOUNDATIONCOLLECTIONURI'] is defined, sorts them into the proper result", () => {
+
+        let result = RegistryAuthReducer.shardRegistriesByCollection(input);
+
+        expect(result).toHaveProperty("sameCollection", sameCollectionEntries);
+        expect(result).toHaveProperty(
+          "differentCollection",
+          otherCollectionEntries
+        );
+      });
+
+      test("when process.env['SYSTEM_TEAMFOUNDATIONCOLLECTIONURI'] is undefined, doesn't sort", () => {
+        process.env[k_collectionUrl] = undefined;
+        let result = RegistryAuthReducer.shardRegistriesByCollection(input);
+
+        expect(result).toHaveProperty("sameCollection", []);
+        expect(result).toHaveProperty("differentCollection", input);
+      });
     });
   });
 
@@ -199,6 +226,31 @@ describe("The class Registry Auth Reducer", () => {
         );
 
         expect(result).toHaveLength(0);
+      });
+
+      test("emits a console.warn due to external registries", async () => {
+
+        jest.spyOn(global.console, 'warn');
+        await RegistryAuthReducer.authenticateRegistries(
+          null,
+          ...sameRegistries,
+          ...differentRegistries
+        );
+
+        expect(console.warn).toHaveBeenCalled();
+
+      });
+
+      test("given input with only internal registries, emits no console.warns (since no external entries)", async () => {
+
+        jest.spyOn(global.console, 'warn');
+        await RegistryAuthReducer.authenticateRegistries(
+          null,
+          ...sameRegistries
+        );
+
+        expect(console.warn).not.toHaveBeenCalled();
+
       });
     });
   });
