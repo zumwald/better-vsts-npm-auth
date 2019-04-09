@@ -41,7 +41,11 @@ export class Config {
     writeFileSync(this.configPath, configContents);
   }
 
-  delete() {
+  /**
+   * Clear the contents of the config by writing
+   * an empty dictionary.
+   */
+  clear() {
     this.write({});
   }
 

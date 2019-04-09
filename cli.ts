@@ -39,7 +39,7 @@ async function configDeleter(config: Config, key: string): Promise<void> {
       "Are you sure you want to delete your config file?"
     );
     if (deleteConfig === true) {
-      config.delete();
+      config.clear();
     }
   }
 }

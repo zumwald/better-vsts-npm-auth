@@ -112,6 +112,20 @@ describe("The Config module", () => {
     });
   });
 
+  describe("clears the config", () => {
+    test("on disk", () => {
+      fs.writeFileSync.mockImplementation((_path: string, content: string) => {
+        expect(content).toHaveLength(0);
+      });
+
+      let config = new Config("");
+
+      config.clear();
+      expect(fs.writeFileSync).toHaveBeenCalledTimes(1);
+      expect.assertions(2);
+    })
+  })
+
   describe("sets the config", () => {
     let configContents = "";
 
