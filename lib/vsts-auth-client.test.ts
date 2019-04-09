@@ -5,7 +5,8 @@ jest.mock("./config");
 import {
   AuthorizationError,
   getUserAuthToken,
-  setRefreshToken
+  setRefreshToken,
+  getVstsLabOauthToken
 } from "./vsts-auth-client";
 import * as querystring from 'querystring';
 
@@ -54,6 +55,14 @@ describe("In the vsts-auth-client module", () => {
       expect(mockConfig.set).toHaveBeenCalledTimes(1);
       expect(mockConfig.set).toHaveBeenCalledWith("refresh_token", fakeToken);
     });
+  });
+  describe("the getVstsLabOauthToken static method", () => {
+    test("checks the environment variable $SYSTEM_ACCESSTOKEN", () => {
+      let fakeValue = "test_systemaccesstoken";
+      process.env["SYSTEM_ACCESSTOKEN"] = fakeValue;
+
+      expect(getVstsLabOauthToken()).toEqual(fakeValue);
+    })
   });
 
   describe("the getUserAuthToken static  method", () => {
