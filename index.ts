@@ -38,7 +38,28 @@ export interface IRunOptions {
   stack?: boolean;
 }
 
+class AuthError extends Error {
+    constructor(message: string, public consentUrl: string) { super(message) }
+}
+
 export async function run(config: Config, options: IRunOptions = {}) {
+  try {
+    await auth(config, options);
+  } catch (e) {
+    if (e.message) {
+      console.log(e.message);
+    }
+
+    // no matter what, we error out here
+    if (options.stack === true) {
+      throw e;
+    } else {
+      process.exit(1);
+    }
+  }
+}
+
+export async function auth(config: Config, options: IRunOptions = {}) {
   const configObj = config.get();
 
   try {
@@ -77,14 +98,15 @@ export async function run(config: Config, options: IRunOptions = {}) {
         configObj.redirectUri
         }`;
 
-      console.log(
+     let message = 
         "\n*****\n" +
         "We need user consent before this script can run.\n\n" +
         "Follow instructions in the browser window that just opened, or if a browser does not open,\n" +
         "manually browse to this url and follow the instructions there:\n\n" +
         `${consentUrl}\n\n` +
-        "Then run better-vsts-npm-auth again after consent has been granted.\n*****\n"
-      );
+        "Then run better-vsts-npm-auth again after consent has been granted.\n*****\n";
+
+      throw new AuthError(message, consentUrl);
     }
 
     // no matter what, we error out here
