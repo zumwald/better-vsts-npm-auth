@@ -13,11 +13,11 @@ interface IKeyValuePair {
   value: string;
 }
 
-async function configSetter(config: Config, argv: IKeyValuePair) {
+function configSetter(config: Config, argv: IKeyValuePair) {
   config.set(argv.key, argv.value);
 }
 
-async function configGetter(config: Config, key: string) {
+function configGetter(config: Config, key: string) {
   if (key) {
     let configObj = config.get();
     let configEntry = configObj[key];
@@ -44,10 +44,13 @@ async function configDeleter(config: Config, key: string): Promise<void> {
   }
 }
 
-function commandBuilder(cmd: (config: Config, args: any) => Promise<void>): (args: any) => void {
+function commandBuilder(cmd: (config: Config, args: any) => void | Promise<void>): (args: any) => void {
   return async (args: any) => {
     let config = new Config(args.configOverride || DEFAULT_CONFIG_PATH);
-    await cmd(config, args);
+    let promise = cmd(config, args);
+    if(promise) {
+       await promise;
+    }
     process.exit(0);
   };
 }
