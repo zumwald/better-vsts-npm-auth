@@ -1,5 +1,5 @@
 import { Npmrc } from "./lib/npm";
-import { Config, IConfigDictionary } from "./lib/config";
+import { Config } from "./lib/config";
 import { authenticateRegistries } from "./lib/registry-auth-reducer";
 import { AuthorizationError } from "./lib/vsts-auth-client";
 const uuid = require("uuid/v4");
@@ -38,15 +38,31 @@ export interface IRunOptions {
   stack?: boolean;
 }
 
-export async function run(options: IRunOptions = {}) {
-  let configObj: IConfigDictionary;
+class AuthError extends Error {
+    constructor(message: string, public consentUrl: string) { super(message) }
+}
 
+export async function run(config: Config, options: IRunOptions = {}) {
   try {
-    if (options.configOverride) {
-      Config.setConfigPath(options.configOverride);
+    await auth(config, options);
+  } catch (e) {
+    if (e.message) {
+      console.log(e.message);
     }
 
-    configObj = Config.get();
+    // no matter what, we error out here
+    if (options.stack === true) {
+      throw e;
+    } else {
+      process.exit(1);
+    }
+  }
+}
+
+export async function auth(config: Config, options: IRunOptions = {}) {
+  const configObj = config.get();
+
+  try {
     // if npmrcPath isn't specified, default is the working directory
     options.npmrcPath = options.npmrcPath || process.cwd();
 
@@ -56,6 +72,7 @@ export async function run(options: IRunOptions = {}) {
     ]);
 
     let authenticatedRegistries = await authenticateRegistries(
+      config,
       ...projectNpmrc.getRegistries(),
       ...userNpmrc.getRegistries()
     );
@@ -81,14 +98,15 @@ export async function run(options: IRunOptions = {}) {
         configObj.redirectUri
         }`;
 
-      console.log(
+     let message = 
         "\n*****\n" +
         "We need user consent before this script can run.\n\n" +
         "Follow instructions in the browser window that just opened, or if a browser does not open,\n" +
         "manually browse to this url and follow the instructions there:\n\n" +
         `${consentUrl}\n\n` +
-        "Then run better-vsts-npm-auth again after consent has been granted.\n*****\n"
-      );
+        "Then run better-vsts-npm-auth again after consent has been granted.\n*****\n";
+
+      throw new AuthError(message, consentUrl);
     }
 
     // no matter what, we error out here
