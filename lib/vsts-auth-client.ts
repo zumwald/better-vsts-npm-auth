@@ -23,7 +23,17 @@ export function getVstsLabOauthToken(): string {
 }
 
 export function isVstsFeedUrl(url: string): boolean {
-  return url.indexOf("pkgs.visualstudio.com/_packaging") > -1;
+  if (!(url.indexOf("/_packaging/") > -1)) {
+    return false;
+  }
+
+  let isLegacyUri = url.indexOf("pkgs.visualstudio.com/") > -1;
+  if (isLegacyUri) {
+    return true;
+  } else {
+    let isAdoUri = url.indexOf("pkgs.dev.azure.com/") > -1;
+    return isAdoUri;
+  }
 }
 
 export function setRefreshToken(token: string) {
