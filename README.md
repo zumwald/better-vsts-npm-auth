@@ -2,6 +2,8 @@
 
 Platform agnostic library and accompanying oauth service enabling developers to easily obtain and use tokens for authorizing NPM feeds in VSTS
 
+![npm](https://img.shields.io/npm/v/better-vsts-npm-auth)
+![npm](https://img.shields.io/npm/dw/better-vsts-npm-auth)
 [![CircleCI](https://circleci.com/gh/zumwald/better-vsts-npm-auth/tree/master.svg?style=svg)](https://circleci.com/gh/zumwald/better-vsts-npm-auth/tree/master)
 [![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
 
