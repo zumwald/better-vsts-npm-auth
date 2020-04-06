@@ -75,6 +75,8 @@ export async function run(options: IRunOptions = {}) {
     // the user needing to authorize the app and/or configure their
     // refresh_token
     if (!process.env.BUILD_BUILDID && !process.env.RELEASE_RELEASEID) {
+      // as of April 2020, appears this endpoint is staying as-is for now even with the branding
+      // change to "Azure DevOps": https://web.archive.org/web/20200406154934/https://docs.microsoft.com/en-us/azure/devops/integrate/get-started/authentication/oauth?view=azure-devops
       let consentUrl = `https://app.vssps.visualstudio.com/oauth2/authorize?client_id=${
         configObj.clientId
         }&response_type=Assertion&state=${uuid()}&scope=vso.packaging_write&redirect_uri=${

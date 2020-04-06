@@ -175,13 +175,16 @@ describe("In the Npm module,", () => {
       });
     });
   });
+});
 
-  describe("the Registry class", () => {
+function generateRegistryTests(name: string, useLegacyUrl: boolean) {
+
+  describe(name, () => {
     describe("has a constructor which", () => {
       describe("constructs an object", () => {
         let feed = "npm-mirror";
         let project = "foobar";
-        let fakeRegistry = `https://${project}.pkgs.visualstudio.com/_packaging/${feed}/npm/registry/`;
+        let fakeRegistry = useLegacyUrl ? `https://${project}.pkgs.visualstudio.com/_packaging/${feed}/npm/registry/` : `https://pkgs.dev.azure.com/${project}/_packaging/${feed}/npm/registry`;
         let o: Registry;
         beforeAll(() => {
           o = new Registry(fakeRegistry);
@@ -213,8 +216,8 @@ describe("In the Npm module,", () => {
        */
       let o: Registry;
       beforeEach(() => {
-        o = new Registry(
-          "https://foobar.pkgs.visualstudio.com/_packaging/npm-mirror/npm/registry/"
+        o = new Registry(useLegacyUrl ?
+          "https://foobar.pkgs.visualstudio.com/_packaging/npm-mirror/npm/registry/" : "https://pkgs.dev.azure.com/foobar/_packaging/npm-mirror/npm/registry/"
         );
       });
       afterEach(() => (o = undefined));
@@ -231,10 +234,10 @@ describe("In the Npm module,", () => {
 
         let result = o.getAuthSettings();
 
-        const k_withoutRegistrySuffix =
-          "//foobar.pkgs.visualstudio.com/_packaging/npm-mirror/npm/:_authToken";
-        const k_withRegistrySuffix =
-          "//foobar.pkgs.visualstudio.com/_packaging/npm-mirror/npm/registry/:_authToken";
+        const k_withoutRegistrySuffix = useLegacyUrl ?
+          "//foobar.pkgs.visualstudio.com/_packaging/npm-mirror/npm/:_authToken" : "//pkgs.dev.azure.com/foobar/_packaging/npm-mirror/npm/:_authToken";
+        const k_withRegistrySuffix = useLegacyUrl ?
+          "//foobar.pkgs.visualstudio.com/_packaging/npm-mirror/npm/registry/:_authToken" : "//pkgs.dev.azure.com/foobar/_packaging/npm-mirror/npm/registry/:_authToken";
 
         expect(Object.getOwnPropertyNames(result)).toHaveLength(2);
         expect(result[k_withoutRegistrySuffix]).toEqual(fakeToken);
@@ -242,4 +245,7 @@ describe("In the Npm module,", () => {
       });
     });
   });
-});
+}
+
+generateRegistryTests("(legacy) the Registry class", true);
+generateRegistryTests("the Registry class", false);

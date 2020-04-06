@@ -1,7 +1,7 @@
 import {
   isVstsFeedUrl,
   getVstsLabOauthToken,
-  getUserAuthToken
+  getUserAuthToken,
 } from "./vsts-auth-client";
 import { Registry } from "./npm";
 const k_VstfCollectionUri = "SYSTEM_TEAMFOUNDATIONCOLLECTIONURI";
@@ -19,7 +19,7 @@ export function filterUniqueVstsRegistries(
 ): Array<Registry> {
   return registries.filter((e, i) => {
     try {
-      let _isUnique = registries.findIndex(v => v.url === e.url) === i;
+      let _isUnique = registries.findIndex((v) => v.url === e.url) === i;
       let _isVstsRegistry = isVstsFeedUrl(e.url);
       return _isUnique && _isVstsRegistry;
     } catch (e) {
@@ -31,11 +31,18 @@ export function filterUniqueVstsRegistries(
 
 export function isInSameCollection(r: Registry): boolean {
   if (process.env[k_VstfCollectionUri]) {
-    return (
-      process.env[k_VstfCollectionUri].indexOf(
-        r.project + ".visualstudio.com"
-      ) > -1
-    );
+    let currentCollectionUri = process.env[k_VstfCollectionUri] as string;
+    let isLegacyVstsUri =
+      currentCollectionUri.indexOf(r.project + ".visualstudio.com") > -1;
+
+    if (isLegacyVstsUri) {
+      return true;
+    }
+
+    let isAdoUri =
+      currentCollectionUri.indexOf("dev.azure.com/" + r.project) > -1;
+
+    return isAdoUri;
   } else {
     return false;
   }
@@ -54,10 +61,10 @@ export function shardRegistriesByCollection(
 ): IRegistryCollectionShards {
   let result: IRegistryCollectionShards = {
     sameCollection: [],
-    differentCollection: []
+    differentCollection: [],
   };
 
-  registries.forEach(r => {
+  registries.forEach((r) => {
     let sameCollection = isInSameCollection(r);
     if (sameCollection) {
       result.sameCollection.push(r);
@@ -80,7 +87,7 @@ export async function authenticateRegistries(
 
   if (!labToken) {
     let userToken = await getUserAuthToken();
-    registriesToAuthenticate.forEach(r => (r.token = userToken));
+    registriesToAuthenticate.forEach((r) => (r.token = userToken));
     return Promise.resolve(registriesToAuthenticate);
   } else {
     // when we're running in a VSTS build agent, we can use the
@@ -93,7 +100,7 @@ export async function authenticateRegistries(
 
     // use the token exposed in the VSTS environment for use by build tasks
     // details: https://docs.microsoft.com/en-us/vsts/build-release/actions/scripts/powershell#oauth
-    registriesByCollection.sameCollection.forEach(r => {
+    registriesByCollection.sameCollection.forEach((r) => {
       console.log(`using SYSTEM_ACCESSTOKEN for ${r.url}`);
       r.token = labToken;
     });
@@ -102,11 +109,9 @@ export async function authenticateRegistries(
     // support authenticating those. Print a warning message for each of them.
     if (registriesByCollection.differentCollection.length > 0) {
       console.warn(
-        `Found ${
-          registriesByCollection.differentCollection.length
-        } registries ` +
+        `Found ${registriesByCollection.differentCollection.length} registries ` +
           "which could not be authenticated:\n" +
-          registriesByCollection.differentCollection.map(x => `\t${x.url}\n`)
+          registriesByCollection.differentCollection.map((x) => `\t${x.url}\n`)
       );
     }
 

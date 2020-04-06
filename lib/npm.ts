@@ -156,6 +156,12 @@ export class Registry {
       registryUrl
     );
 
+    if (projectResult === null) {
+      projectResult = /https?:\/\/pkgs\.dev\.azure\.com\/(.+?)\//i.exec(
+        registryUrl
+      );
+    }
+
     this.feed = feedResult && feedResult[1];
     this.project = projectResult && projectResult[1];
   }
