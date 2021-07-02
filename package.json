@@ -33,6 +33,7 @@
     "jsonwebtoken": "^8.1.0",
     "node-fetch": "^2.3.0",
     "uuid": "^3.1.0",
+    "yaml": "^1.10.2",
     "yargs": "^10.0.3"
   },
   "devDependencies": {

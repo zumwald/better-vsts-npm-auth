@@ -1,37 +1,51 @@
-import * as fs from "fs";
 import * as path from "path";
-import * as ini from "ini";
 import { execSync } from "child_process";
+import * as fs from "fs";
+import * as yaml from 'yaml';
 
-const AUTHTOKEN_PARTIAL_KEY = ":_authToken";
-
-export interface INpmSettings {
-  [key: string]: string;
+export type IYarnRcYmlSettings = {
+  [key: string]: IYarnRcYmlSettings | string;
 }
 
 /**
- * Represents an .npmrc configuration file and presents an interface
+ * Represents an .yarnrc.yml configuration file and presents an interface
  * for interactions with it.
  */
-export class Npmrc {
+ export class YarnrcYml {
   public filePath: string;
-  public settings: INpmSettings;
+  public settings: IYarnRcYmlSettings;
+
   /**
-   * @param {string} basePath - path to .npmrc file or directory containing .npmrc file
+   * @param {string} basePath - path to .yarnrc.yml file or directory containing .yarnrc.yml file
    */
-  constructor(basePath: string) {
+   constructor(basePath: string) {
     if (!basePath) {
       throw new Error(
-        "Npmrc constructor must be called with directory which contains the .npmrc file"
+        "Yarnrcyml constructor must be called with directory which contains the .yarnrc.yml file"
       );
     }
 
-    if (!basePath.endsWith(".npmrc")) {
-      basePath = path.join(basePath, ".npmrc");
+    if (!basePath.endsWith(".yarnrc.yml")) {
+      basePath = path.join(basePath, ".yarnrc.yml");
     }
 
     this.filePath = basePath;
     this.settings = {};
+  }
+
+  /**
+   * Reads npm settings to determine the location of the
+   * userconfig and creates an YarnrcYml object for it.
+   */
+   static getUserNpmrc(): YarnrcYml {
+    let userConfigPath = execSync("npm config get userconfig")
+      .toString()
+      .trim();
+    if (userConfigPath.endsWith(".npmrc")) {
+      userConfigPath = path.join(userConfigPath.substring(0, userConfigPath.length - ".npmrc".length), ".yarnrc.yml");
+    }
+
+    return new YarnrcYml(userConfigPath);
   }
 
   /**
@@ -40,35 +54,40 @@ export class Npmrc {
    * it finds.
    * @returns {Registry[]}
    */
-  getRegistries(): Array<Registry> {
-    let settingsKeys = Object.getOwnPropertyNames(this.settings);
-    let registries: Array<Registry> = [];
+   getRegistries(settings?: IYarnRcYmlSettings): Array<YarnRcYmlRegistry> {
+    let settingsKeys = Object.getOwnPropertyNames(settings || this.settings);
+    let registries: Array<YarnRcYmlRegistry> = [];
 
     settingsKeys.forEach(key => {
-      if (key.indexOf("registry") > -1) {
-        registries.push(new Registry(this.settings[key]));
-      }
+      const settingValue = this.settings[key];
+      if (typeof settingValue === "object") {
+        registries.push(...this.getRegistries(settingValue))
+      } else {
+        if (key.indexOf("npmRegistryServer") > -1) {
+          registries.push(new YarnRcYmlRegistry(settingValue));
+        }
+      }      
     });
 
     return registries;
   }
 
   /**
-   * Reads the contents of the .npmrc file corresponding
+   * Reads the contents of the .yarnrc.yml file corresponding
    * to this object then parses and initializes settings.
    * When finished, returns this object.
    */
-  async readSettingsFromFile(): Promise<Npmrc> {
+   async readSettingsFromFile(): Promise<YarnrcYml> {
     let that = this;
 
-    return new Promise<Npmrc>((resolve, reject) => {
+    return new Promise<YarnrcYml>((resolve, reject) => {
       fs.readFile(that.filePath, "utf8", (err, data) => {
         if (err && err.code !== "ENOENT") {
           reject(err);
         } else {
           try {
             console.log("config from", that.filePath);
-            that.settings = ini.parse(data || "");
+            that.settings = yaml.parse(data || "");
 
             if (that.settings[""]) {
               delete that.settings[""];
@@ -85,12 +104,12 @@ export class Npmrc {
 
   /**
    * Encodes this object's settings and then
-   * writes them to disk at the .npmrc location
+   * writes them to disk at the .yarnrc location
    * the object was instantiated from.
    */
-  async saveSettingsToFile() {
+   async saveSettingsToFile() {
     return new Promise<void>((resolve, reject) => {
-      fs.writeFile(this.filePath, ini.encode(this.settings), err => {
+      fs.writeFile(this.filePath, yaml.stringify(this.settings), err => {
         if (err) {
           reject(err);
         } else {
@@ -99,40 +118,11 @@ export class Npmrc {
       });
     });
   }
-
-  /**
-   * Checks whether the given key is an auth setting.
-   */
-  static isAuthSetting(key: string): boolean {
-    return key.indexOf(AUTHTOKEN_PARTIAL_KEY) > -1;
-  }
-
-  /**
-   * Reads NPM settings to determine the location of the
-   * userconfig and creates an Npmrc object for it.
-   */
-  static getUserNpmrc(): Npmrc {
-    let userConfigPath = execSync("npm config get userconfig")
-      .toString()
-      .trim();
-
-    return new Npmrc(userConfigPath);
-  }
 }
 
-export interface IBasicAuthSettings extends INpmSettings {
-  username: string;
-  password: string;
-  email: string;
-}
-
-/**
- * An abstraction for an npm registry configuration entry
- */
-export class Registry {
+export class YarnRcYmlRegistry {
   public url: string;
   public token: string;
-  public basicAuthSettings: IBasicAuthSettings;
   public feed: string;
   public project: string;
 
@@ -145,11 +135,6 @@ export class Registry {
 
     this.url = registryUrl;
     this.token = "";
-    this.basicAuthSettings = {
-      username: null,
-      password: null,
-      email: null
-    };
 
     let feedResult = /_packaging\/(.*)\/npm\/registry/i.exec(registryUrl);
     let projectResult = /https?:\/\/(.*)\.pkgs\.visualstudio/i.exec(
@@ -165,21 +150,24 @@ export class Registry {
     this.feed = feedResult && feedResult[1];
     this.project = projectResult && projectResult[1];
   }
-
+  
   /**
    * Returns the auth settings for this Registry
    */
-  getAuthSettings(): INpmSettings {
-    let result: INpmSettings = {};
+   getAuthSettings(): IYarnRcYmlSettings {
+    let result: IYarnRcYmlSettings = {};
 
     if (this.token) {
       let match = /https?:(.*)registry/gi.exec(this.url);
       let identifier = match && match[1];
 
-      result[`${identifier}${AUTHTOKEN_PARTIAL_KEY}`] = this.token;
-      result[`${identifier}registry/${AUTHTOKEN_PARTIAL_KEY}`] = this.token;
+      result["npmRegistries"] = {
+        [`${identifier}registry/`]: {
+          'npmAuthToken': this.token,
+        }
+      }
     } else {
-      result = this.basicAuthSettings as INpmSettings;
+      throw new Error('Basic auth not supported with Yarn v2')
     }
 
     return result;
