@@ -1,7 +1,7 @@
 import * as path from "path";
 import { execSync } from "child_process";
 import * as fs from "fs";
-import * as yaml from 'yaml';
+import * as yaml from "js-yaml";
 
 export type IYarnRcYmlSettings = {
   [key: string]: IYarnRcYmlSettings | string;
@@ -87,7 +87,7 @@ export type IYarnRcYmlSettings = {
         } else {
           try {
             console.log("config from", that.filePath);
-            that.settings = yaml.parse(data || "");
+            that.settings = yaml.load(data || "") as IYarnRcYmlSettings;
 
             if (that.settings[""]) {
               delete that.settings[""];
@@ -109,7 +109,7 @@ export type IYarnRcYmlSettings = {
    */
    async saveSettingsToFile() {
     return new Promise<void>((resolve, reject) => {
-      fs.writeFile(this.filePath, yaml.stringify(this.settings), err => {
+      fs.writeFile(this.filePath, yaml.dump(this.settings), err => {
         if (err) {
           reject(err);
         } else {
