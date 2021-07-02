@@ -2,6 +2,7 @@ let vstsAuthClient = require("./vsts-auth-client");
 
 import * as RegistryAuthReducer from "./registry-auth-reducer";
 import { Registry } from "./npm";
+import { YarnRcYmlRegistry } from "./yarnrcyml";
 
 const k_getVstsLabOauthToken = "getVstsLabOauthToken";
 
@@ -162,7 +163,7 @@ function generateTests(name: string, useLegacyUri: boolean) {
           .mockReturnValue(Promise.resolve(token));
 
         let result: Promise<Array<
-          Registry
+          Registry | YarnRcYmlRegistry
         >> = RegistryAuthReducer.authenticateRegistries(...registries);
 
         return expect(result)
