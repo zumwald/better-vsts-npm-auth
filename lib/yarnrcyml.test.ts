@@ -8,13 +8,13 @@ let { execSync } = require("child_process");
 
 import { IYarnRcYmlSettings, YarnrcYml, YarnRcYmlRegistry } from "./yarnrcyml";
 
-describe("In the YarnRmYml module,", () => {
+describe("In the YarnRcYml module,", () => {
   afterEach(() => {
     jest.resetAllMocks();
     expect.hasAssertions();
   });
 
-  describe("the YarnRmYml class", () => {
+  describe("the YarnRcYml class", () => {
     /**
      * @type {YarnrcYml}
      */
@@ -90,7 +90,7 @@ describe("In the YarnRmYml module,", () => {
       });
 
       test("resolves settings as JSON from .yarnrc.yml file with entries", () => {
-        const registryName = "//domoreexp.pkgs.visualstudio.com/_packaging/npm-mirror/npm/registry/";
+        const registryName = "//foo.pkgs.visualstudio.com/_packaging/npm-mirror/npm/registry/";
         const token = "foobar";
         fs.readFile.mockImplementation((_a: any, _b: any, cb: Function) => {
           cb(null, `npmRegistries:\n  "${registryName}":\n    npmAlwaysAuth: true\n    npmAuthToken: ${token}\n`);
@@ -100,7 +100,7 @@ describe("In the YarnRmYml module,", () => {
           "settings",
           { 
             npmRegistries: {
-              ["//domoreexp.pkgs.visualstudio.com/_packaging/npm-mirror/npm/registry/"]: {
+              ["//foo.pkgs.visualstudio.com/_packaging/npm-mirror/npm/registry/"]: {
                 npmAlwaysAuth: true,
                 npmAuthToken: "foobar"
               }
