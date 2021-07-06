@@ -43,6 +43,8 @@ export type IYarnRcYmlSettings = {
       .trim();
     if (userConfigPath.endsWith(".npmrc")) {
       userConfigPath = path.join(userConfigPath.substring(0, userConfigPath.length - ".npmrc".length), ".yarnrc.yml");
+    } else {
+      userConfigPath = path.join(userConfigPath, ".yarnrc.yml");
     }
 
     return new YarnrcYml(userConfigPath);
@@ -59,7 +61,7 @@ export type IYarnRcYmlSettings = {
     let registries: Array<YarnRcYmlRegistry> = [];
 
     settingsKeys.forEach(key => {
-      const settingValue = this.settings[key];
+      const settingValue = settings ? settings[key] : this.settings[key];
       if (typeof settingValue === "object") {
         registries.push(...this.getRegistries(settingValue))
       } else {
@@ -87,7 +89,7 @@ export type IYarnRcYmlSettings = {
         } else {
           try {
             console.log("config from", that.filePath);
-            that.settings = yaml.load(data || "") as IYarnRcYmlSettings;
+            that.settings = yaml.load(data || "") as IYarnRcYmlSettings || {};
 
             if (that.settings[""]) {
               delete that.settings[""];
@@ -120,11 +122,17 @@ export type IYarnRcYmlSettings = {
   }
 }
 
+export interface IYarnRcYmlBasicAuthSettings {
+  username: string;
+  password: string;
+}
+
 export class YarnRcYmlRegistry {
   public url: string;
   public token: string;
   public feed: string;
   public project: string;
+  public basicAuthSettings: IYarnRcYmlBasicAuthSettings;
 
   constructor(registryUrl: string) {
     if (!registryUrl) {
@@ -135,6 +143,10 @@ export class YarnRcYmlRegistry {
 
     this.url = registryUrl;
     this.token = "";
+    this.basicAuthSettings = {
+      username: null,
+      password: null,
+    };
 
     let feedResult = /_packaging\/(.*)\/npm\/registry/i.exec(registryUrl);
     let projectResult = /https?:\/\/(.*)\.pkgs\.visualstudio/i.exec(
@@ -161,13 +173,15 @@ export class YarnRcYmlRegistry {
       let match = /https?:(.*)registry/gi.exec(this.url);
       let identifier = match && match[1];
 
-      result["npmRegistries"] = {
+      result.npmRegistries = {
         [`${identifier}registry/`]: {
           'npmAuthToken': this.token,
         }
-      }
+      };
     } else {
-      throw new Error('Basic auth not supported with Yarn v2')
+      if (this.basicAuthSettings.username && this.basicAuthSettings.password) {
+        result.npmAuthIdent = `${this.basicAuthSettings.username}:${this.basicAuthSettings.password}`;
+      }
     }
 
     return result;
