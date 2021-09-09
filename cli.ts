@@ -73,6 +73,11 @@ const argv = require("yargs")
     describe: "path to npmrc config",
     type: "string"
   })
+  .options("y", {
+    alias: "yarnrcYmlPath",
+    describe: "path to yarnrc.yml config",
+    type: "string"
+  })
   .options("c", {
     alias: "configOverride",
     describe: "alternate path to this tool's configuration file",

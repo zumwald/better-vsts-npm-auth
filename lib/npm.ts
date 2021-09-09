@@ -89,7 +89,7 @@ export class Npmrc {
    * the object was instantiated from.
    */
   async saveSettingsToFile() {
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       fs.writeFile(this.filePath, ini.encode(this.settings), err => {
         if (err) {
           reject(err);

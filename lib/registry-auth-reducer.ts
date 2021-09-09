@@ -4,19 +4,20 @@ import {
   getUserAuthToken,
 } from "./vsts-auth-client";
 import { Registry } from "./npm";
+import { YarnRcYmlRegistry } from "./yarnrcyml";
 const k_VstfCollectionUri = "SYSTEM_TEAMFOUNDATIONCOLLECTIONURI";
 
 export interface IRegistryCollectionShards {
-  sameCollection: Array<Registry>;
-  differentCollection: Array<Registry>;
+  sameCollection: Array<Registry | YarnRcYmlRegistry>;
+  differentCollection: Array<Registry | YarnRcYmlRegistry>;
 }
 /**
  * Given an array of Registry objects, returns only those
  * which are unique and correspond to a VSTS feed.
  */
 export function filterUniqueVstsRegistries(
-  registries: Array<Registry>
-): Array<Registry> {
+  registries: Array<Registry | YarnRcYmlRegistry>
+): Array<Registry | YarnRcYmlRegistry> {
   return registries.filter((e, i) => {
     try {
       let _isUnique = registries.findIndex((v) => v.url === e.url) === i;
@@ -29,7 +30,7 @@ export function filterUniqueVstsRegistries(
   });
 }
 
-export function isInSameCollection(r: Registry): boolean {
+export function isInSameCollection(r: Registry | YarnRcYmlRegistry): boolean {
   if (process.env[k_VstfCollectionUri]) {
     let currentCollectionUri = process.env[k_VstfCollectionUri] as string;
     let isLegacyVstsUri =
@@ -57,7 +58,7 @@ export function isInSameCollection(r: Registry): boolean {
  * as it depends on SYSTEM_TEAMFOUNDATIONCOLLECTIONURI.
  */
 export function shardRegistriesByCollection(
-  registries: Array<Registry>
+  registries: Array<Registry | YarnRcYmlRegistry>
 ): IRegistryCollectionShards {
   let result: IRegistryCollectionShards = {
     sameCollection: [],
@@ -77,8 +78,8 @@ export function shardRegistriesByCollection(
 }
 
 export async function authenticateRegistries(
-  ...registries: Array<Registry>
-): Promise<Array<Registry>> {
+  ...registries: Array<Registry | YarnRcYmlRegistry>
+): Promise<Array<Registry | YarnRcYmlRegistry>> {
   let registriesToAuthenticate = filterUniqueVstsRegistries(registries);
 
   // if we can get an OAuth token for the user, that is

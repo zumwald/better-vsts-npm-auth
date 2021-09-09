@@ -2,7 +2,9 @@ import { Npmrc } from "./lib/npm";
 import { Config, IConfigDictionary } from "./lib/config";
 import { authenticateRegistries } from "./lib/registry-auth-reducer";
 import { AuthorizationError } from "./lib/vsts-auth-client";
+import { YarnrcYml } from "./lib/yarnrcyml";
 const uuid = require("uuid/v4");
+import * as fs from "fs";
 
 export { setRefreshToken } from "./lib/vsts-auth-client";
 
@@ -35,6 +37,7 @@ export function isAuthorizationError(e: Error): boolean {
 export interface IRunOptions {
   configOverride?: string;
   npmrcPath?: string;
+  yarnrcYmlPath?: string;
   stack?: boolean;
 }
 
@@ -47,17 +50,30 @@ export async function run(options: IRunOptions = {}) {
     }
 
     configObj = Config.get();
-    // if npmrcPath isn't specified, default is the working directory
+    // if npmrcPath / yarnrcPath isn't specified, default is the working directory
     options.npmrcPath = options.npmrcPath || process.cwd();
+    options.yarnrcYmlPath = options.yarnrcYmlPath || process.cwd();
 
-    let [userNpmrc, projectNpmrc] = await Promise.all([
-      Npmrc.getUserNpmrc().readSettingsFromFile(),
-      new Npmrc(options.npmrcPath).readSettingsFromFile()
-    ]);
+    const projectYarnrcYml = new YarnrcYml(options.yarnrcYmlPath);
+    const isProjectUsingYarnv2 = fs.existsSync(projectYarnrcYml.filePath);
+
+    let userRc, projectRc;
+
+    if (!isProjectUsingYarnv2) {
+      [userRc, projectRc] = await Promise.all([
+        Npmrc.getUserNpmrc().readSettingsFromFile(),
+        new Npmrc(options.npmrcPath).readSettingsFromFile()
+      ]);
+    } else {
+      [userRc, projectRc] = await Promise.all([
+        YarnrcYml.getUserNpmrc().readSettingsFromFile(),
+        new YarnrcYml(options.yarnrcYmlPath).readSettingsFromFile()
+      ]);
+    }    
 
     let authenticatedRegistries = await authenticateRegistries(
-      ...projectNpmrc.getRegistries(),
-      ...userNpmrc.getRegistries()
+      ...userRc.getRegistries(),
+      ...projectRc.getRegistries()
     );
 
     // get the new settings which need to be written to the user npmrc file
@@ -66,9 +82,9 @@ export async function run(options: IRunOptions = {}) {
       authenticatedRegistries.map(r => `\t${r.url}\n`).join("")
     );
     let authSettings = authenticatedRegistries.map(r => r.getAuthSettings());
-    Object.assign(userNpmrc.settings, ...authSettings);
+    Object.assign(userRc.settings, ...authSettings);
 
-    await userNpmrc.saveSettingsToFile();
+    await userRc.saveSettingsToFile();
   } catch (e) {
     // if this is running in a CI environment, reject to signal failure
     // otherwise, open the auth page as the error is likely due to
