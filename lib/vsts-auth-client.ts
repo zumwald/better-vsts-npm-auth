@@ -70,9 +70,11 @@ export async function getUserAuthToken(): Promise<string> {
   console.log(
     "\nnew token received:",
     "\n\tnbf:",
-    newTokenDecoded && new Date(newTokenDecoded.nbf * 1000).toLocaleString(),
+    newTokenDecoded &&
+      new Date((newTokenDecoded.nbf as number) * 1000).toLocaleString(),
     "\n\texp:",
-    newTokenDecoded && new Date(newTokenDecoded.exp * 1000).toLocaleString(),
+    newTokenDecoded &&
+      new Date((newTokenDecoded.exp as number) * 1000).toLocaleString(),
     "\n\tscope:",
     newTokenDecoded && newTokenDecoded.scp
   );
