@@ -4,24 +4,24 @@ import * as fs from "fs";
 import * as yaml from "js-yaml";
 
 export type IYarnRcYmlSettings = {
-  [key: string]: IYarnRcYmlSettings | string;
-}
+  [key: string]: IYarnRcYmlSettings | string | boolean;
+};
 
 /**
  * Represents an .yarnrc.yml configuration file and presents an interface
  * for interactions with it.
  */
- export class YarnrcYml {
+export class YarnrcYml {
   public filePath: string;
   public settings: IYarnRcYmlSettings;
 
   /**
    * @param {string} basePath - path to .yarnrc.yml file or directory containing .yarnrc.yml file
    */
-   constructor(basePath: string) {
+  constructor(basePath: string) {
     if (!basePath) {
       throw new Error(
-        "Yarnrcyml constructor must be called with directory which contains the .yarnrc.yml file"
+        "Yarnrcyml constructor must be called with directory which contains the .yarnrc.yml file",
       );
     }
 
@@ -37,12 +37,15 @@ export type IYarnRcYmlSettings = {
    * Reads npm settings to determine the location of the
    * userconfig and creates an YarnrcYml object for it.
    */
-   static getUserNpmrc(): YarnrcYml {
+  static getUserNpmrc(): YarnrcYml {
     let userConfigPath = execSync("npm config get userconfig")
       .toString()
       .trim();
     if (userConfigPath.endsWith(".npmrc")) {
-      userConfigPath = path.join(userConfigPath.substring(0, userConfigPath.length - ".npmrc".length), ".yarnrc.yml");
+      userConfigPath = path.join(
+        userConfigPath.substring(0, userConfigPath.length - ".npmrc".length),
+        ".yarnrc.yml",
+      );
     } else {
       userConfigPath = path.join(userConfigPath, ".yarnrc.yml");
     }
@@ -56,19 +59,24 @@ export type IYarnRcYmlSettings = {
    * it finds.
    * @returns {Registry[]}
    */
-   getRegistries(settings?: IYarnRcYmlSettings): Array<YarnRcYmlRegistry> {
+  getRegistries(settings?: IYarnRcYmlSettings): Array<YarnRcYmlRegistry> {
     let settingsKeys = Object.getOwnPropertyNames(settings || this.settings);
     let registries: Array<YarnRcYmlRegistry> = [];
+    let globalAlwaysAuth = this.settings.npmAlwaysAuth || false;
 
     settingsKeys.forEach(key => {
       const settingValue = settings ? settings[key] : this.settings[key];
       if (typeof settingValue === "object") {
-        registries.push(...this.getRegistries(settingValue))
+        registries.push(...this.getRegistries(settingValue));
       } else {
         if (key.indexOf("npmRegistryServer") > -1) {
-          registries.push(new YarnRcYmlRegistry(settingValue));
+          let registry = new YarnRcYmlRegistry(settingValue.toString());
+          if (globalAlwaysAuth) {
+            registry.alwaysAuth = true;
+          }
+          registries.push(registry);
         }
-      }      
+      }
     });
 
     return registries;
@@ -79,7 +87,7 @@ export type IYarnRcYmlSettings = {
    * to this object then parses and initializes settings.
    * When finished, returns this object.
    */
-   async readSettingsFromFile(): Promise<YarnrcYml> {
+  async readSettingsFromFile(): Promise<YarnrcYml> {
     let that = this;
 
     return new Promise<YarnrcYml>((resolve, reject) => {
@@ -89,7 +97,7 @@ export type IYarnRcYmlSettings = {
         } else {
           try {
             console.log("config from", that.filePath);
-            that.settings = yaml.load(data || "") as IYarnRcYmlSettings || {};
+            that.settings = (yaml.load(data || "") as IYarnRcYmlSettings) || {};
 
             if (that.settings[""]) {
               delete that.settings[""];
@@ -109,7 +117,7 @@ export type IYarnRcYmlSettings = {
    * writes them to disk at the .yarnrc location
    * the object was instantiated from.
    */
-   async saveSettingsToFile() {
+  async saveSettingsToFile() {
     return new Promise<void>((resolve, reject) => {
       fs.writeFile(this.filePath, yaml.dump(this.settings), err => {
         if (err) {
@@ -130,6 +138,7 @@ export interface IYarnRcYmlBasicAuthSettings {
 export class YarnRcYmlRegistry {
   public url: string;
   public token: string;
+  public alwaysAuth: boolean;
   public feed: string;
   public project: string;
   public basicAuthSettings: IYarnRcYmlBasicAuthSettings;
@@ -137,12 +146,13 @@ export class YarnRcYmlRegistry {
   constructor(registryUrl: string) {
     if (!registryUrl) {
       throw new Error(
-        "Registry constructor must be called with url for the given registry"
+        "Registry constructor must be called with url for the given registry",
       );
     }
 
     this.url = registryUrl;
     this.token = "";
+    this.alwaysAuth = false;
     this.basicAuthSettings = {
       username: null,
       password: null,
@@ -150,23 +160,23 @@ export class YarnRcYmlRegistry {
 
     let feedResult = /_packaging\/(.*)\/npm\/registry/i.exec(registryUrl);
     let projectResult = /https?:\/\/(.*)\.pkgs\.visualstudio/i.exec(
-      registryUrl
+      registryUrl,
     );
 
     if (projectResult === null) {
       projectResult = /https?:\/\/pkgs\.dev\.azure\.com\/(.+?)\//i.exec(
-        registryUrl
+        registryUrl,
       );
     }
 
     this.feed = feedResult && feedResult[1];
     this.project = projectResult && projectResult[1];
   }
-  
+
   /**
    * Returns the auth settings for this Registry
    */
-   getAuthSettings(): IYarnRcYmlSettings {
+  getAuthSettings(): IYarnRcYmlSettings {
     let result: IYarnRcYmlSettings = {};
 
     if (this.token) {
@@ -175,8 +185,9 @@ export class YarnRcYmlRegistry {
 
       result.npmRegistries = {
         [`${identifier}registry/`]: {
-          'npmAuthToken': this.token,
-        }
+          npmAuthToken: this.token,
+          npmAlwaysAuth: this.alwaysAuth,
+        },
       };
     } else {
       if (this.basicAuthSettings.username && this.basicAuthSettings.password) {
