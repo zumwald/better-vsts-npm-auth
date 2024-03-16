@@ -48,7 +48,7 @@ describe("In the YarnRcYml module,", () => {
       test("returns an empty array when none of the settings are registreies", () => {
         foo.settings = {
           "always-auth": "true",
-          cache: "some/path"
+          cache: "some/path",
         };
 
         expect(foo.getRegistries()).toEqual([]);
@@ -64,8 +64,8 @@ describe("In the YarnRcYml module,", () => {
           npmScopes: {
             private: {
               npmRegistryServer: myprivateregistry,
-            }
-          }
+            },
+          },
         };
 
         let registries = foo.getRegistries();
@@ -74,6 +74,33 @@ describe("In the YarnRcYml module,", () => {
         expect(registries).toHaveLength(2);
         expect(registries[0].url).toEqual(myregistry);
         expect(registries[1].url).toEqual(myprivateregistry);
+      });
+
+      test("applies global npmAlwaysAuth setting to each registry", () => {
+        const registryUrl = "https://registry.example.com";
+        foo.settings = {
+          npmAlwaysAuth: true,
+          npmRegistryServer: registryUrl,
+        };
+
+        let registries = foo.getRegistries();
+
+        expect(registries).toHaveLength(1);
+        expect(registries[0]).toBeInstanceOf(YarnRcYmlRegistry);
+        expect(registries[0].alwaysAuth).toEqual(true);
+      });
+
+      test("does not apply global npmAlwaysAuth when it is not set", () => {
+        const registryUrl = "https://registry.example.com";
+        foo.settings = {
+          npmRegistryServer: registryUrl,
+        };
+
+        let registries = foo.getRegistries();
+
+        expect(registries).toHaveLength(1);
+        expect(registries[0]).toBeInstanceOf(YarnRcYmlRegistry);
+        expect(registries[0].alwaysAuth).toEqual(false);
       });
     });
 
@@ -85,27 +112,31 @@ describe("In the YarnRcYml module,", () => {
 
         return expect(foo.readSettingsFromFile()).rejects.toHaveProperty(
           "code",
-          "ERROR"
+          "ERROR",
         );
       });
 
       test("resolves settings as JSON from .yarnrc.yml file with entries", () => {
-        const registryName = "//foo.pkgs.visualstudio.com/_packaging/npm-mirror/npm/registry/";
+        const registryName =
+          "//foo.pkgs.visualstudio.com/_packaging/npm-mirror/npm/registry/";
         const token = "foobar";
         fs.readFile.mockImplementation((_a: any, _b: any, cb: Function) => {
-          cb(null, `npmRegistries:\n  "${registryName}":\n    npmAlwaysAuth: true\n    npmAuthToken: ${token}\n`);
+          cb(
+            null,
+            `npmRegistries:\n  "${registryName}":\n    npmAlwaysAuth: true\n    npmAuthToken: ${token}\n`,
+          );
         });
 
         return expect(foo.readSettingsFromFile()).resolves.toHaveProperty(
           "settings",
-          { 
+          {
             npmRegistries: {
               ["//foo.pkgs.visualstudio.com/_packaging/npm-mirror/npm/registry/"]: {
                 npmAlwaysAuth: true,
-                npmAuthToken: "foobar"
-              }
-            } 
-          }
+                npmAuthToken: "foobar",
+              },
+            },
+          },
         );
       });
 
@@ -117,7 +148,7 @@ describe("In the YarnRcYml module,", () => {
 
           return expect(foo.readSettingsFromFile()).resolves.toHaveProperty(
             "settings",
-            {}
+            {},
           );
         });
 
@@ -128,7 +159,7 @@ describe("In the YarnRcYml module,", () => {
 
           return expect(foo.readSettingsFromFile()).resolves.toHaveProperty(
             "settings",
-            {}
+            {},
           );
         });
 
@@ -152,7 +183,7 @@ describe("In the YarnRcYml module,", () => {
         fs.writeFile.mockImplementation(
           (_path: string, _content: string, cb: Function) => {
             cb(someError);
-          }
+          },
         );
 
         return expect(foo.saveSettingsToFile()).rejects.toEqual(someError);
@@ -164,7 +195,7 @@ describe("In the YarnRcYml module,", () => {
           (_path: string, content: string, cb: Function) => {
             expect(content).toContain("some: value");
             cb(null);
-          }
+          },
         );
         return expect(foo.saveSettingsToFile())
           .resolves.toBeUndefined()
@@ -201,13 +232,14 @@ describe("In the YarnRcYml module,", () => {
 });
 
 function generateRegistryTests(name: string, useLegacyUrl: boolean) {
-
   describe(name, () => {
     describe("has a constructor which", () => {
       describe("constructs an object", () => {
         let feed = "npm-mirror";
         let project = "foobar";
-        let fakeRegistry = useLegacyUrl ? `https://${project}.pkgs.visualstudio.com/_packaging/${feed}/npm/registry/` : `https://pkgs.dev.azure.com/${project}/_packaging/${feed}/npm/registry`;
+        let fakeRegistry = useLegacyUrl
+          ? `https://${project}.pkgs.visualstudio.com/_packaging/${feed}/npm/registry/`
+          : `https://pkgs.dev.azure.com/${project}/_packaging/${feed}/npm/registry`;
         let o: YarnRcYmlRegistry;
         beforeAll(() => {
           o = new YarnRcYmlRegistry(fakeRegistry);
@@ -239,8 +271,10 @@ function generateRegistryTests(name: string, useLegacyUrl: boolean) {
        */
       let o: YarnRcYmlRegistry;
       beforeEach(() => {
-        o = new YarnRcYmlRegistry(useLegacyUrl ?
-          "https://foobar.pkgs.visualstudio.com/_packaging/npm-mirror/npm/registry/" : "https://pkgs.dev.azure.com/foobar/_packaging/npm-mirror/npm/registry/"
+        o = new YarnRcYmlRegistry(
+          useLegacyUrl
+            ? "https://foobar.pkgs.visualstudio.com/_packaging/npm-mirror/npm/registry/"
+            : "https://pkgs.dev.azure.com/foobar/_packaging/npm-mirror/npm/registry/",
         );
       });
       afterEach(() => (o = undefined));
@@ -250,23 +284,27 @@ function generateRegistryTests(name: string, useLegacyUrl: boolean) {
       test("returns an object with npmAuthIdent set to the username and password if both are populated and there is no token", () => {
         o.basicAuthSettings = {
           username: "foo",
-          password: "bar"
+          password: "bar",
         };
 
         let result = o.getAuthSettings();
         expect(result.npmAuthIdent).toEqual("foo:bar");
-      })
+      });
       test("returns a npmRegistries object, containing a key with the 'registry/' suffix", () => {
         const fakeToken = "foo";
         o.token = fakeToken;
 
         let result = o.getAuthSettings();
-        const k_withRegistrySuffix: string = useLegacyUrl ?
-          "//foobar.pkgs.visualstudio.com/_packaging/npm-mirror/npm/registry/" : "//pkgs.dev.azure.com/foobar/_packaging/npm-mirror/npm/registry/";
+        const k_withRegistrySuffix: string = useLegacyUrl
+          ? "//foobar.pkgs.visualstudio.com/_packaging/npm-mirror/npm/registry/"
+          : "//pkgs.dev.azure.com/foobar/_packaging/npm-mirror/npm/registry/";
 
         const npmRegistries = result.npmRegistries as IYarnRcYmlSettings;
         expect(Object.getOwnPropertyNames(result)).toHaveLength(1);
-        expect((npmRegistries[k_withRegistrySuffix] as IYarnRcYmlSettings).npmAuthToken).toEqual(fakeToken);
+        expect(
+          (npmRegistries[k_withRegistrySuffix] as IYarnRcYmlSettings)
+            .npmAuthToken,
+        ).toEqual(fakeToken);
       });
     });
   });

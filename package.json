@@ -1,6 +1,6 @@
 {
   "name": "better-vsts-npm-auth",
-  "version": "7.0.1",
+  "version": "7.1.0",
   "description": "Platform agnostic library which provides a robust solution for maintaining credentials in your npmrc files",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
