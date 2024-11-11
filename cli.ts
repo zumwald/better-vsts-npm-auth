@@ -42,7 +42,7 @@ async function configDeleter(key: string): Promise<void> {
     _writeConfig(configObject);
   } else {
     // delete the whole config, once user confirms
-    let deleteConfig = await input.confrim(
+    let deleteConfig = await input.confirm(
       "Are you sure you want to delete your config file?"
     );
     if (deleteConfig === true) {
