@@ -1,7 +1,7 @@
 import * as path from "path";
-import { execSync } from "child_process";
 import * as fs from "fs";
 import * as yaml from "js-yaml";
+import { getUserNpmrcPath } from "./npm";
 
 export type IYarnRcYmlSettings = {
   [key: string]: IYarnRcYmlSettings | string;
@@ -34,19 +34,20 @@ export type IYarnRcYmlSettings = {
   }
 
   /**
-   * Reads npm settings to determine the location of the
-   * userconfig and creates an YarnrcYml object for it.
+   * Returns a YarnrcYml instance for the user-level config file.
+   * Does not invoke npm; uses same path convention as user .npmrc.
    */
    static getUserNpmrc(): YarnrcYml {
-    let userConfigPath = execSync("npm config get userconfig")
-      .toString()
-      .trim();
-    if (userConfigPath.endsWith(".npmrc")) {
-      userConfigPath = path.join(userConfigPath.substring(0, userConfigPath.length - ".npmrc".length), ".yarnrc.yml");
+    const userNpmrcPath = getUserNpmrcPath();
+    let userConfigPath: string;
+    if (userNpmrcPath.endsWith(".npmrc")) {
+      userConfigPath = path.join(
+        userNpmrcPath.substring(0, userNpmrcPath.length - ".npmrc".length),
+        ".yarnrc.yml"
+      );
     } else {
-      userConfigPath = path.join(userConfigPath, ".yarnrc.yml");
+      userConfigPath = path.join(path.dirname(userNpmrcPath), ".yarnrc.yml");
     }
-
     return new YarnrcYml(userConfigPath);
   }
 

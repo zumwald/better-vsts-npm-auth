@@ -1,9 +1,21 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as ini from "ini";
-import { execSync } from "child_process";
+import { homedir } from "os";
 
 const AUTHTOKEN_PARTIAL_KEY = ":_authToken";
+
+/**
+ * Returns the path to the user-level .npmrc file without invoking npm.
+ * Uses NPM_CONFIG_USERCONFIG if set, otherwise ~/.npmrc.
+ * Works with npm, pnpm, and Yarn.
+ */
+export function getUserNpmrcPath(): string {
+  if (process.env.NPM_CONFIG_USERCONFIG) {
+    return process.env.NPM_CONFIG_USERCONFIG;
+  }
+  return path.join(homedir(), ".npmrc");
+}
 
 export interface INpmSettings {
   [key: string]: string;
@@ -108,15 +120,11 @@ export class Npmrc {
   }
 
   /**
-   * Reads NPM settings to determine the location of the
-   * userconfig and creates an Npmrc object for it.
+   * Returns an Npmrc instance for the user-level config file.
+   * Does not invoke npm; uses homedir or NPM_CONFIG_USERCONFIG.
    */
   static getUserNpmrc(): Npmrc {
-    let userConfigPath = execSync("npm config get userconfig")
-      .toString()
-      .trim();
-
-    return new Npmrc(userConfigPath);
+    return new Npmrc(getUserNpmrcPath());
   }
 }
 

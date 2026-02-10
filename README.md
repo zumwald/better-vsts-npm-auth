@@ -13,6 +13,10 @@ Platform agnostic library and accompanying oauth service enabling developers to 
 While not necessary, _better-vsts-npm-auth_ was built to be used as a global module.
 `npm i -g better-vsts-npm-auth`
 
+## Requirements
+
+This tool **does not require npm or pnpm to be installed**. It works with **npm**, **pnpm**, **Yarn**, and **Yarn v2** (when using `.yarnrc.yml`). Credentials are read from and written to your user-level config file: by default `~/.npmrc` (or `~/.yarnrc.yml` for Yarn v2). You can override the user config location with the `NPM_CONFIG_USERCONFIG` environment variable.
+
 ## How to use it
 
 Azure DevOps (formerly Visual Studio Team Services aka VSTS) [uses OAuth to authorize access to resources](https://docs.microsoft.com/en-us/azure/devops/integrate/get-started/authentication/oauth?view=azure-devops) - like your npm registries! Better-vsts-npm-auth is one half of a two-part solution: `better-vsts-npm-auth` is the piece of software which you install on your machine, and it handles all the OAuth magic for you. The second part of the equation is [`stateless-vsts-oauth`](https://github.com/zumwald/stateless-vsts-oauth) which is a very simple web endpoint which handles the OAuth flow described above. I designed both tools such that they never store your data - only _you_ decide where your data is stored. To see how that happens, and help you through your first use of `better-vsts-npm-auth` I'll walk you through the process:

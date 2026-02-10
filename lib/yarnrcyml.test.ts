@@ -1,10 +1,9 @@
 jest.mock("fs");
 jest.mock("path");
-jest.mock("child_process");
+jest.mock("os", () => ({ homedir: jest.fn(() => "/foobar") }));
 
 let path = require("path");
 let fs = require("fs");
-let { execSync } = require("child_process");
 
 import { IYarnRcYmlSettings, YarnrcYml, YarnRcYmlRegistry } from "./yarnrcyml";
 
@@ -175,26 +174,34 @@ describe("In the YarnRcYml module,", () => {
     });
 
     describe("has a method getUserNpmrc which", () => {
-      test("returns an YarnrcYml object corresponding to the 'userconfig'", () => {
-        execSync.mockImplementation(() => "/foobar/.npmrc\r\n");
+      test("returns a YarnrcYml object with path derived from user .npmrc path (homedir)", () => {
+        const os = require("os");
+        os.homedir.mockReturnValue("/foobar");
         path.join.mockImplementation((a: string, b: string) => {
-          return a.endsWith("/") ? a + b : a + "/" + b;
+          const x = a != null ? a : "/foobar";
+          return x.endsWith("/") ? x + b : x + "/" + b;
         });
+        path.dirname.mockImplementation((p: string) => p.replace(/\/[^/]*$/, "") || p);
         let result = YarnrcYml.getUserNpmrc();
 
         expect(result).toBeInstanceOf(YarnrcYml);
         expect(result).toHaveProperty("filePath", "/foobar/.yarnrc.yml");
       });
 
-      test("returns the userconfig path with .yarnrc.yml at the end, if the path doesn't end with .npmrc", () => {
-        execSync.mockImplementation(() => "/foobar/\r\n");
-        path.join.mockImplementation((a: string, b: string) => {
-          return a.endsWith("/") ? a + b : a + "/" + b;
-        });
-        let result = YarnrcYml.getUserNpmrc();
-
-        expect(result).toBeInstanceOf(YarnrcYml);
-        expect(result).toHaveProperty("filePath", "/foobar/.yarnrc.yml");
+      test("returns path with .yarnrc.yml when user config path does not end with .npmrc", () => {
+        const customPath = "/custom/dir";
+        const orig = process.env.NPM_CONFIG_USERCONFIG;
+        process.env.NPM_CONFIG_USERCONFIG = customPath;
+        path.dirname.mockImplementation((p: string) => (p === "/custom/dir" ? "/custom" : p.replace(/\/[^/]*$/, "") || p));
+        path.join.mockImplementation((a: string, b: string) => (a != null ? a : "") + "/" + b);
+        try {
+          let result = YarnrcYml.getUserNpmrc();
+          expect(result).toBeInstanceOf(YarnrcYml);
+          expect(result).toHaveProperty("filePath", "/custom/.yarnrc.yml");
+        } finally {
+          if (orig !== undefined) process.env.NPM_CONFIG_USERCONFIG = orig;
+          else delete process.env.NPM_CONFIG_USERCONFIG;
+        }
       });
     });
   });

@@ -1,10 +1,9 @@
 jest.mock("fs");
 jest.mock("path");
-jest.mock("child_process");
+jest.mock("os", () => ({ homedir: jest.fn(() => "/foobar") }));
 
 let path = require("path");
 let fs = require("fs");
-let { execSync } = require("child_process");
 
 import { Registry, Npmrc } from "./npm";
 
@@ -163,15 +162,31 @@ describe("In the Npm module,", () => {
     });
 
     describe("has a method getUserNpmrc which", () => {
-      test("returns an Npmrc object corresponding to the 'userconfig'", () => {
-        execSync.mockImplementation(() => "/foobar/.npmrc\r\n");
+      test("returns an Npmrc object using homedir when NPM_CONFIG_USERCONFIG is not set", () => {
+        const os = require("os");
+        os.homedir.mockReturnValue("/foobar");
         path.join.mockImplementation((a: string, b: string) => {
-          return a.endsWith("/") ? a + b : a + "/" + b;
+          const x = a != null ? a : "/foobar";
+          return x.endsWith("/") ? x + b : x + "/" + b;
         });
         let result = Npmrc.getUserNpmrc();
 
         expect(result).toBeInstanceOf(Npmrc);
         expect(result).toHaveProperty("filePath", "/foobar/.npmrc");
+      });
+
+      test("returns an Npmrc object using NPM_CONFIG_USERCONFIG when set", () => {
+        const customPath = "/custom/config/.npmrc";
+        const orig = process.env.NPM_CONFIG_USERCONFIG;
+        process.env.NPM_CONFIG_USERCONFIG = customPath;
+        try {
+          let result = Npmrc.getUserNpmrc();
+          expect(result).toBeInstanceOf(Npmrc);
+          expect(result).toHaveProperty("filePath", customPath);
+        } finally {
+          if (orig !== undefined) process.env.NPM_CONFIG_USERCONFIG = orig;
+          else delete process.env.NPM_CONFIG_USERCONFIG;
+        }
       });
     });
   });
